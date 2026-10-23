@@ -1,0 +1,60 @@
+{
+  "dataset_id": "EQUIVALENT_65KW_EXPERIMENTAL",
+  "display_name": "Stack PEMFC experimental equivalente de 65 kW",
+  "version": "1.0",
+  "scientific_role": "Referência experimental equivalente para uma etapa futura de calibração em escala de alta potência.",
+  "scope_warning": "Este conjunto de dados não é um ensaio do Horizon VLIIPro50-22 e não deve ser apresentado como tal.",
+  "is_horizon_test": false,
+  "manufacturer_relationship": "O stack experimental foi produzido por fabricante diferente da Horizon Fuel Cell Technologies.",
+  "source": {
+    "citation": "Chen, H. et al. Research on membrane electrode assembly consistency of high-power proton exchange membrane fuel cell stack. CIESC Journal, 75(2), 637-646, 2024.",
+    "doi": "10.11949/0438-1157.20230745",
+    "table": "Table 1 (geometria) e Table 2 (pontos operacionais)",
+    "source_type": "ARTIGO_EXPERIMENTAL"
+  },
+  "stack": {
+    "number_of_cells": {
+      "value": 210,
+      "unit": "cells",
+      "classification": "EXPERIMENTAL_EQUIVALENTE"
+    },
+    "active_area_cm2": {
+      "value": 300.0,
+      "unit": "cm2",
+      "classification": "EXPERIMENTAL_EQUIVALENTE"
+    }
+  },
+  "fields": {
+    "current_A": {
+      "unit": "A",
+      "classification": "EXPERIMENTAL_EQUIVALENTE",
+      "description": "Corrente elétrica medida no stack."
+    },
+    "stack_voltage_V": {
+      "unit": "V",
+      "classification": "EXPERIMENTAL_EQUIVALENTE",
+      "description": "Tensão terminal medida no stack."
+    },
+    "current_density_A_cm2": {
+      "unit": "A/cm2",
+      "classification": "DERIVADO",
+      "formula": "current_A / active_area_cm2"
+    },
+    "cell_voltage_V": {
+      "unit": "V/cell",
+      "classification": "DERIVADO",
+      "formula": "stack_voltage_V / number_of_cells"
+    },
+    "stack_power_kW": {
+      "unit": "kW",
+      "classification": "DERIVADO",
+      "formula": "current_A * stack_voltage_V / 1000"
+    },
+    "power_density_W_cm2": {
+      "unit": "W/cm2",
+      "classification": "DERIVADO",
+      "formula": "stack_power_W / (number_of_cells * active_area_cm2)",
+      "description": "Densidade de potência eletroquímica por área ativa de uma célula."
+    }
+  }
+}
