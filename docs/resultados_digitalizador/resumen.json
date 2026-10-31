@@ -1,0 +1,295 @@
+{
+  "fixtures": [
+    {
+      "fixture": "01_curva_simple.png",
+      "curve": "Curva A",
+      "color": "#1465b0",
+      "candidate": "C1",
+      "user_choice_needed": false,
+      "confidence": 1.0,
+      "n_points": 40,
+      "anchor_dev_px": {
+        "X1": 0.5,
+        "X2": 0.5,
+        "Y1": 1.0,
+        "Y2": 0.5
+      },
+      "results": {
+        "A_automatico": {
+          "rmse_V": 0.0006878,
+          "mae_V": 0.0006773,
+          "x_coverage": 1.0,
+          "stdout": "True points: 95; extracted points: 40; overlap: 94\nRMSE [V]: 0.0006878; MAE [V]: 0.0006773; X coverage: 100.0%\nThese are DIGITALIZATION errors, NOT PEMFC parameter fit errors."
+        },
+        "B_anclas_corregidas": {
+          "rmse_V": 6.52e-05,
+          "mae_V": 2.96e-05,
+          "x_coverage": 1.0,
+          "stdout": "True points: 95; extracted points: 40; overlap: 95\nRMSE [V]: 0.0000652; MAE [V]: 0.0000296; X coverage: 100.0%\nThese are DIGITALIZATION errors, NOT PEMFC parameter fit errors."
+        }
+      },
+      "warnings": []
+    },
+    {
+      "fixture": "02_dos_curvas.png",
+      "curve": "Curva A",
+      "color": "#1465b0",
+      "candidate": "C2",
+      "user_choice_needed": true,
+      "confidence": 1.0,
+      "n_points": 40,
+      "anchor_dev_px": {
+        "X1": 0.5,
+        "X2": 0.5,
+        "Y1": 1.0,
+        "Y2": 0.5
+      },
+      "results": {
+        "A_automatico": {
+          "rmse_V": 0.0006878,
+          "mae_V": 0.0006773,
+          "x_coverage": 1.0,
+          "stdout": "True points: 95; extracted points: 40; overlap: 94\nRMSE [V]: 0.0006878; MAE [V]: 0.0006773; X coverage: 100.0%\nThese are DIGITALIZATION errors, NOT PEMFC parameter fit errors."
+        },
+        "B_anclas_corregidas": {
+          "rmse_V": 6.52e-05,
+          "mae_V": 2.96e-05,
+          "x_coverage": 1.0,
+          "stdout": "True points: 95; extracted points: 40; overlap: 95\nRMSE [V]: 0.0000652; MAE [V]: 0.0000296; X coverage: 100.0%\nThese are DIGITALIZATION errors, NOT PEMFC parameter fit errors."
+        }
+      },
+      "warnings": [
+        "Se detectaron 2 trazos continuos distintos: elija uno (no se mezclan puntos)."
+      ]
+    },
+    {
+      "fixture": "02_dos_curvas.png",
+      "curve": "Curva B",
+      "color": "#d45532",
+      "candidate": "C1",
+      "user_choice_needed": false,
+      "confidence": 1.0,
+      "n_points": 40,
+      "anchor_dev_px": {
+        "X1": 0.5,
+        "X2": 0.5,
+        "Y1": 1.0,
+        "Y2": 0.5
+      },
+      "results": {
+        "A_automatico": {
+          "rmse_V": 0.0006159,
+          "mae_V": 0.0006042,
+          "x_coverage": 1.0,
+          "stdout": "True points: 95; extracted points: 40; overlap: 94\nRMSE [V]: 0.0006159; MAE [V]: 0.0006042; X coverage: 100.0%\nThese are DIGITALIZATION errors, NOT PEMFC parameter fit errors."
+        },
+        "B_anclas_corregidas": {
+          "rmse_V": 6.57e-05,
+          "mae_V": 3.01e-05,
+          "x_coverage": 1.0,
+          "stdout": "True points: 95; extracted points: 40; overlap: 95\nRMSE [V]: 0.0000657; MAE [V]: 0.0000301; X coverage: 100.0%\nThese are DIGITALIZATION errors, NOT PEMFC parameter fit errors."
+        }
+      },
+      "warnings": [
+        "Se detectaron 2 trazos continuos distintos: elija uno (no se mezclan puntos)."
+      ]
+    },
+    {
+      "fixture": "03_marcadores_y_ruido.png",
+      "curve": "Curva A",
+      "color": "#1465b0",
+      "candidate": "C1",
+      "user_choice_needed": false,
+      "confidence": 1.0,
+      "n_points": 40,
+      "anchor_dev_px": {
+        "X1": 0.5,
+        "X2": 0.5,
+        "Y1": 1.0,
+        "Y2": 0.5
+      },
+      "results": {
+        "A_automatico": {
+          "rmse_V": 0.0006908,
+          "mae_V": 0.0006753,
+          "x_coverage": 1.0,
+          "stdout": "True points: 95; extracted points: 40; overlap: 94\nRMSE [V]: 0.0006908; MAE [V]: 0.0006753; X coverage: 100.0%\nThese are DIGITALIZATION errors, NOT PEMFC parameter fit errors."
+        },
+        "B_anclas_corregidas": {
+          "rmse_V": 0.0001029,
+          "mae_V": 5.1e-05,
+          "x_coverage": 1.0,
+          "stdout": "True points: 95; extracted points: 40; overlap: 95\nRMSE [V]: 0.0001029; MAE [V]: 0.0000510; X coverage: 100.0%\nThese are DIGITALIZATION errors, NOT PEMFC parameter fit errors."
+        }
+      },
+      "warnings": []
+    }
+  ],
+  "otekon_figure3": {
+    "image_sha256": "e21595c44b002d1f590b175eb1f01cdc0cb9b4ec1597ef6fc71c7b7509f17ef1",
+    "comparisons": [
+      {
+        "curve": "tensao_298K",
+        "panel": 1,
+        "color": "azul",
+        "candidate": "C2",
+        "anchors_px": {
+          "X1": 102.35,
+          "X2": 559.24,
+          "Y1": 349.0,
+          "Y2": 66.0
+        },
+        "anchor_sources": {
+          "X1": "auto-tick",
+          "X2": "auto-tick",
+          "Y1": "auto-grid",
+          "Y2": "auto-grid"
+        },
+        "n_points": 40,
+        "j_range": [
+          0.016142823139592727,
+          1.0089567287832575
+        ],
+        "disagreement_vs_previous_digitization": {
+          "rmse_V": 0.0015648,
+          "mae_V": 0.0014464,
+          "x_coverage": 0.9940000000000001,
+          "stdout": "True points: 101; extracted points: 40; overlap: 100\nRMSE [V]: 0.0015648; MAE [V]: 0.0014464; X coverage: 99.4%\nThese are DIGITALIZATION errors, NOT PEMFC parameter fit errors."
+        },
+        "resolution": {
+          "x_per_px": 0.002626491813872129,
+          "y_per_px": 0.002120159899438098,
+          "x_unit": "A/cm²",
+          "y_unit": "V",
+          "sigma_dig_y": 0.001060079949719049,
+          "sigma_dig_x": 0.0013132459069360644,
+          "line_thickness_px": 3.0,
+          "basis": "±0,5 px de cuantización y colocación de anclas, convertidos con la pendiente de calibración"
+        }
+      },
+      {
+        "curve": "tensao_373K",
+        "panel": 1,
+        "color": "rojo",
+        "candidate": "C1",
+        "anchors_px": {
+          "X1": 102.35,
+          "X2": 559.24,
+          "Y1": 349.0,
+          "Y2": 66.0
+        },
+        "anchor_sources": {
+          "X1": "auto-tick",
+          "X2": "auto-tick",
+          "Y1": "auto-grid",
+          "Y2": "auto-grid"
+        },
+        "n_points": 40,
+        "j_range": [
+          0.016142823139592727,
+          1.0089567287832575
+        ],
+        "disagreement_vs_previous_digitization": {
+          "rmse_V": 0.0015397,
+          "mae_V": 0.001448,
+          "x_coverage": 0.9940000000000001,
+          "stdout": "True points: 101; extracted points: 40; overlap: 100\nRMSE [V]: 0.0015397; MAE [V]: 0.0014480; X coverage: 99.4%\nThese are DIGITALIZATION errors, NOT PEMFC parameter fit errors."
+        },
+        "resolution": {
+          "x_per_px": 0.002626491813872129,
+          "y_per_px": 0.002120159899438098,
+          "x_unit": "A/cm²",
+          "y_unit": "V",
+          "sigma_dig_y": 0.001060079949719049,
+          "sigma_dig_x": 0.0013132459069360644,
+          "line_thickness_px": 3.0,
+          "basis": "±0,5 px de cuantización y colocación de anclas, convertidos con la pendiente de calibración"
+        }
+      },
+      {
+        "curve": "pressao_1atm",
+        "panel": 4,
+        "color": "azul",
+        "candidate": "C1",
+        "anchors_px": {
+          "X1": 735.76,
+          "X2": 1124.8,
+          "Y1": 714.26,
+          "Y2": 436.37
+        },
+        "anchor_sources": {
+          "X1": "auto-grid",
+          "X2": "auto-grid",
+          "Y1": "auto-tick",
+          "Y2": "auto-tick"
+        },
+        "n_points": 40,
+        "j_range": [
+          0.014763183358921367,
+          1.0095036820182175
+        ],
+        "disagreement_vs_previous_digitization": {
+          "rmse_V": 0.0014497,
+          "mae_V": 0.0012574,
+          "x_coverage": 0.995,
+          "stdout": "True points: 101; extracted points: 40; overlap: 100\nRMSE [V]: 0.0014497; MAE [V]: 0.0012574; X coverage: 99.5%\nThese are DIGITALIZATION errors, NOT PEMFC parameter fit errors."
+        },
+        "resolution": {
+          "x_per_px": 0.0025703888854245378,
+          "y_per_px": 0.0021591037176212154,
+          "x_unit": "A/cm²",
+          "y_unit": "V",
+          "sigma_dig_y": 0.0010795518588106077,
+          "sigma_dig_x": 0.0012851944427122689,
+          "line_thickness_px": 1.0,
+          "basis": "±0,5 px de cuantización y colocación de anclas, convertidos con la pendiente de calibración"
+        }
+      },
+      {
+        "curve": "pressao_5atm",
+        "panel": 4,
+        "color": "rojo",
+        "candidate": "C2",
+        "anchors_px": {
+          "X1": 735.76,
+          "X2": 1124.8,
+          "Y1": 714.26,
+          "Y2": 436.37
+        },
+        "anchor_sources": {
+          "X1": "auto-grid",
+          "X2": "auto-grid",
+          "Y1": "auto-tick",
+          "Y2": "auto-tick"
+        },
+        "n_points": 40,
+        "j_range": [
+          0.014763183358921367,
+          1.0095036820182175
+        ],
+        "disagreement_vs_previous_digitization": {
+          "rmse_V": 0.0015089,
+          "mae_V": 0.0013229,
+          "x_coverage": 0.995,
+          "stdout": "True points: 101; extracted points: 40; overlap: 100\nRMSE [V]: 0.0015089; MAE [V]: 0.0013229; X coverage: 99.5%\nThese are DIGITALIZATION errors, NOT PEMFC parameter fit errors."
+        },
+        "resolution": {
+          "x_per_px": 0.0025703888854245378,
+          "y_per_px": 0.0021591037176212154,
+          "x_unit": "A/cm²",
+          "y_unit": "V",
+          "sigma_dig_y": 0.0010795518588106077,
+          "sigma_dig_x": 0.0012851944427122689,
+          "line_thickness_px": 1.0,
+          "basis": "±0,5 px de cuantización y colocación de anclas, convertidos con la pendiente de calibración"
+        }
+      }
+    ],
+    "fit_motor1_preset_otekon": {
+      "status": "AJUSTADO_A_CURVA",
+      "rmse_V": 0.0010588072539137702,
+      "baseline_rmse_V_previous_digitization": 0.001411370003308996,
+      "note": "RMSE del AJUSTE del modelo a los datos digitalizados; NO es error de digitalización ni validación experimental."
+    }
+  }
+}

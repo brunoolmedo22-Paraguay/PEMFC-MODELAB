@@ -1,0 +1,12 @@
+parameter,symbol,initial_value,identified_value,lower_bound,upper_bound,initial_rationale
+xi1,ξ1,-0.9514,-0.6745917761670677,-1.5,-0.2,Valor inicial publicado na Eq. (4).
+xi2,ξ2,0.00312,0.0017785872982732738,0.0,0.005,Valor inicial publicado na Eq. (4).
+xi3,ξ3,-0.000187,-7.385730383836271e-05,-0.0003,0.0,Valor inicial publicado na Eq. (4).
+xi4,ξ4,7.4e-05,1.1962354854376388e-05,0.0,0.0001,Valor inicial publicado na Eq. (4).
+R_mem_ref_ohm_cm2,"Rmem,ref",0.2,0.22543219267976503,0.05,0.5,Estimativa da inclinação da região aproximadamente ôhmica.
+R_mem_temperature_exponent,nR,0.0,-0.7765113161441747,-2.0,2.0,Dependência térmica não explicitada da condutividade da membrana.
+concentration_a_ref_V,aref,7.982e-05,0.0065820596488017896,0.0,0.03,"Eq. (13) avaliada em 298,15 K como ponto de partida."
+concentration_a_temperature_V_K,aT,-1.2e-06,1.5092491473234814e-05,-5e-05,5e-05,Coeficiente térmico publicado para a Eq. (13).
+concentration_b_cm2_A,b,8.0,2.924191925353816,0.1,8.0,Conversão de 8×10⁻³ cm²/mA para cm²/A.
+fuel_utilization,U_f,,0.6961460963207167,0.0,1.0,Inferência escalar posterior a partir das curvas de eficiência.
+N_cells,N,,41.0,1.0,500.0,Restrição inteira aplicada à escala de potência com A=232 cm².

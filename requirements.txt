@@ -1,0 +1,11 @@
+# Versiones exactas con las que se ejecutó y aprobó la suite completa (Python 3.12.3).
+# Requiere Python >= 3.11 (pandas 3 / numpy 2.4). Ver docs/VERIFICACION.md y docs/VERIFICACION_DIGITALIZADOR.md.
+# v0.2.0: pillow + opencv-python-headless (digitalizador local; sin GUI, apto para Streamlit Cloud).
+streamlit==1.66.1
+numpy==2.4.4
+pandas==3.0.2
+scipy==1.17.1
+plotly==7.1.0
+matplotlib==3.10.8
+pillow==12.1.1
+opencv-python-headless==4.13.0.92

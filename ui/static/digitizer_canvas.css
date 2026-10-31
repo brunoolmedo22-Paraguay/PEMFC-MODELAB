@@ -1,0 +1,21 @@
+/* Lienzo del digitalizador. Usa las variables de tema de Streamlit con valores de reserva. */
+.pml-dz { display: flex; flex-direction: column; gap: 4px; outline: none; font-family: var(--st-font, sans-serif);
+  color: var(--st-text-color, #262730); }
+.pml-dz:focus-visible { box-shadow: 0 0 0 2px var(--st-primary-color, #ff4b4b); border-radius: 6px; }
+.pml-bar { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+.pml-btn { font: inherit; font-size: 12.5px; padding: 3px 8px; border-radius: 6px; cursor: pointer;
+  border: 1px solid var(--st-border-color, rgba(49,51,63,0.25)); background: var(--st-secondary-background-color, #f0f2f6);
+  color: inherit; line-height: 1.4; }
+.pml-btn:hover { border-color: var(--st-primary-color, #ff4b4b); }
+.pml-btn.on { background: var(--st-primary-color, #ff4b4b); color: #fff; border-color: transparent; }
+.pml-btn[data-mode="X1"], .pml-btn[data-mode="X2"] { color: #d4007f; font-weight: 600; }
+.pml-btn[data-mode="Y1"], .pml-btn[data-mode="Y2"] { color: #0060e0; font-weight: 600; }
+.pml-btn.on[data-mode] { color: #fff; }
+.pml-sep { width: 1px; height: 20px; background: var(--st-border-color, rgba(49,51,63,0.2)); margin: 0 4px; }
+.pml-wrap { position: relative; width: 100%; height: 540px; border-radius: 6px; overflow: hidden;
+  border: 1px solid var(--st-border-color, rgba(49,51,63,0.2)); touch-action: none; }
+@media (max-width: 700px) { .pml-wrap { height: 380px; } }
+.pml-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.pml-status { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; opacity: 0.85; min-height: 18px; }
+.pml-s-pos { font-variant-numeric: tabular-nums; }
+.pml-edited { color: #d46b00; font-weight: 600; }

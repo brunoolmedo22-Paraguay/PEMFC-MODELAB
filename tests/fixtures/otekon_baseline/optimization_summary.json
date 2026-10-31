@@ -1,0 +1,13 @@
+{
+  "algorithm": "bounded multistart nonlinear least squares (TRF)",
+  "number_of_starts": 16,
+  "random_seed": 20260720,
+  "digitization_sigma_V": 0.003,
+  "voltage_rmse_V": 0.0014113700033089956,
+  "jacobian_condition_number_scaled": 2185.9322454336275,
+  "fuel_utilization": 0.6961460963207167,
+  "effective_N_times_A_cm2": 9674.603683262707,
+  "effective_number_of_cells": 41.70087794509787,
+  "adopted_integer_cells": 41.0,
+  "adopted_area_cm2": 232.0
+}

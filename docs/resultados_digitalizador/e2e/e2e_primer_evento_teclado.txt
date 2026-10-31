@@ -1,0 +1,2 @@
+key reinvocación: 200 ms; misma instancia: True ; zoom conservado: True ; foco en lienzo: True DIV[] ; lienzo 39
+key servidor: 39

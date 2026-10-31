@@ -1,0 +1,68 @@
+{
+ "drag": {
+  "8": {
+   "antes": [
+    328.141,
+    299.7
+   ],
+   "despues": [
+    328.141,
+    262.459
+   ],
+   "mod": 1
+  },
+  "20": {
+   "antes": [
+    591.526,
+    422.36
+   ],
+   "despues": [
+    591.526,
+    467.049
+   ],
+   "mod": 1
+  },
+  "32": {
+   "antes": [
+    854.91,
+    543.263
+   ],
+   "despues": [
+    854.91,
+    513.47
+   ],
+   "mod": 1
+  }
+ },
+ "undo_32_restaurado": true,
+ "redo_32_reaplicado": true,
+ "zoom_scale": 5.811521834083097,
+ "gridline_x522_en_pantalla": [
+  228,
+  232,
+  239
+ ],
+ "vecino_+6px_imagen": [
+  255,
+  255,
+  255
+ ],
+ "gridline_y420_en_pantalla": [
+  242,
+  243,
+  245
+ ],
+ "vecino_y+6": [
+  255,
+  255,
+  255
+ ],
+ "punto_cercano": [
+  20,
+  591.53,
+  467.05
+ ],
+ "color_marcador": null,
+ "errs": [],
+ "exc": 0
+}

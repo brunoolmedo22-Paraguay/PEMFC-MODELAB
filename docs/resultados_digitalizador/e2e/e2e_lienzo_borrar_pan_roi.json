@@ -1,0 +1,27 @@
+{
+ "borrar_modo": [
+  40,
+  39
+ ],
+ "borrar_supr": 38,
+ "ctrl_z": 39,
+ "excluidos_recuadro": [
+  6,
+  6
+ ],
+ "dialogo_abierto_tras_pan": 1,
+ "pan": {
+  "dx_img": 100.0,
+  "dy_img": 50.0,
+  "rev_sin_cambio": true
+ },
+ "pide_confirmacion_por_ediciones": true,
+ "roi_puntos_px_rango": [
+  602.5,
+  954.5,
+  40
+ ],
+ "candidatos_tras_roi": [],
+ "errs": [],
+ "exc": 0
+}

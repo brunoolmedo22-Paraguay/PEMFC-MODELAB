@@ -1,0 +1,49 @@
+{
+  "synthetic": true,
+  "image_file": "03_marcadores_y_ruido.png",
+  "description": "CURVAS ARTIFICIALES para probar reconocimiento/digitalización, no ensayos PEMFC",
+  "image_size_px": {
+    "width": 1200,
+    "height": 750
+  },
+  "x_unit": "A/cm²",
+  "y_unit": "V",
+  "y_basis": "celda",
+  "axis_linear": true,
+  "reference_anchors_px": {
+    "x1": {
+      "px": 150.0,
+      "py": 667.5,
+      "value": 0.0,
+      "unit": "A/cm²"
+    },
+    "x2": {
+      "px": 1080.0,
+      "py": 667.5,
+      "value": 1.5,
+      "unit": "A/cm²"
+    },
+    "y1": {
+      "px": 150.0,
+      "py": 667.5,
+      "value": 0.4,
+      "unit": "V"
+    },
+    "y2": {
+      "px": 150.0,
+      "py": 90.0,
+      "value": 1.1,
+      "unit": "V"
+    }
+  },
+  "traces": [
+    {
+      "id": "Curva A",
+      "color": "#1465b0",
+      "n_truth_points": 95
+    }
+  ],
+  "reference_csv": "03_marcadores_y_ruido_truth.csv",
+  "expected_pixel_coordinate_convention": "top-left origin; Y down",
+  "evaluation": "Interpolar puntos extraídos contra truth en x dentro de intersección; reportar RMSE y cobertura. No son datos medidos."
+}

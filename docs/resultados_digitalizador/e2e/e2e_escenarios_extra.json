@@ -1,0 +1,50 @@
+{
+ "corrupta": [
+  "Imagen rechazada (roto.png): No se pudo decodificar la imagen (¿archivo corrupto o truncado?): Truncated File Read El borrador anterior (si lo había) se conserva."
+ ],
+ "sin_ejes_estado": [
+  "REQUIERE_CALIBRACION · Coordenadas en píxeles / calibración pendiente: escriba los valores de X1, X2, Y1 e Y2. Confirmar está bloqueado."
+ ],
+ "sin_ejes_confirmar_bloqueado": true,
+ "sin_ejes_anclas": {
+  "X1": {
+   "px": null,
+   "py": null,
+   "label": "?"
+  },
+  "X2": {
+   "px": null,
+   "py": null,
+   "label": "?"
+  },
+  "Y1": {
+   "px": null,
+   "py": null,
+   "label": "?"
+  },
+  "Y2": {
+   "px": null,
+   "py": null,
+   "label": "?"
+  }
+ },
+ "sin_ejes_puntos": 40,
+ "candidatos": [
+  "(ninguno: trazado manual)",
+  "C1: línea rojo (#d45532) · 40 pts · confianza alta (1.00)",
+  "C2: línea azul (#1465b0) · 40 pts · confianza alta (1.00)"
+ ],
+ "dos_curvas_y_medio_antes_despues": [
+  355.5,
+  425.6,
+  40
+ ],
+ "otekon_estado": [
+  "REVISION · Calibrado: revise el trazo, la tabla y complete las condiciones de medición."
+ ],
+ "otekon_avisos": [
+  "Se detectaron 4 paneles con ejes. Se usa el panel 1; elija otro en «Panel» o delimite el ROI del gráfico deseado."
+ ],
+ "errs": [],
+ "exc": 0
+}

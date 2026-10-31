@@ -1,0 +1,257 @@
+{
+  "curve_id": "fixture01_digitalizada",
+  "role": "calibración",
+  "metadata": {
+    "curve_id": "fixture01_digitalizada",
+    "role": "calibración",
+    "source": "Fixture sintético 01 del handoff (NO experimental)",
+    "provenance": "Digitalización asistida de 01_curva_simple.png; confirmado por el usuario",
+    "quality": "digitalizado",
+    "sigma_V": null,
+    "sigma_origin": "",
+    "conditions_origin": "MEDIDO",
+    "notes": "Curva digitalizada (SHA-256 imagen 2febd278e40e…). Calidad «digitalizado»: no constituye validación experimental independiente."
+  },
+  "conditions": {
+    "temperature_K": 343.15,
+    "cathode_pressure_atm": 1.5,
+    "p_h2_atm": null,
+    "oxygen_fraction": null
+  },
+  "conditions_input": {
+    "temperature": 343.15,
+    "temperature_unit": "K",
+    "pressure": 1.5,
+    "pressure_unit": "atm",
+    "pressure_reference": "absoluta",
+    "ambient_kPa": null,
+    "p_h2_atm_abs": null,
+    "oxygen_fraction": null
+  },
+  "n_points": 40,
+  "domain": {
+    "j_A_cm2": [
+      0.039494895217624934,
+      1.4193981730252552
+    ],
+    "V_cell_V": [
+      0.4487393886919453,
+      0.9619613653981891
+    ]
+  },
+  "source_file": "01_curva_simple.png",
+  "source_sha256": "2febd278e40e1c288b783020c5e8dcbf36eda728c2f7e9f177d0d9b742e4054b",
+  "normalized_sha256": "642c0ba79837fab0ba31f1ab755b29466f94863939d0b00a9006496f876d0195",
+  "mapping": {
+    "source_kind": "imagen_digitalizada",
+    "current_unit": "A/cm²",
+    "voltage_unit": "V",
+    "voltage_basis": "celda",
+    "axis_scales": {
+      "X": "lineal",
+      "Y": "lineal"
+    },
+    "anchors_px": {
+      "X1": {
+        "name": "X1",
+        "px": 150.0,
+        "py": 668.5082749215579,
+        "value": 0.0,
+        "source": "usuario",
+        "edited": true
+      },
+      "X2": {
+        "name": "X2",
+        "px": 1080.5,
+        "py": 668.5082749215579,
+        "value": 1.5,
+        "source": "auto-tick",
+        "edited": true
+      },
+      "Y1": {
+        "name": "Y1",
+        "px": 150.47543089770602,
+        "py": 668.5,
+        "value": 0.4,
+        "source": "auto-tick",
+        "edited": true
+      },
+      "Y2": {
+        "name": "Y2",
+        "px": 150.50000912845184,
+        "py": 90.5,
+        "value": 1.1,
+        "source": "usuario",
+        "edited": true
+      }
+    },
+    "calibration": {
+      "x": {
+        "axis": "X",
+        "pixel_1": 150.0,
+        "value_1": 0.0,
+        "pixel_2": 1080.5,
+        "value_2": 1.5,
+        "scale": "lineal",
+        "pixel_coordinate": "px",
+        "formula": "x = 0.0 + (px − 150.0)·(1.5 − 0.0)/(1080.5 − 150.0)"
+      },
+      "y": {
+        "axis": "Y",
+        "pixel_1": 668.5,
+        "value_1": 0.4,
+        "pixel_2": 90.5,
+        "value_2": 1.1,
+        "scale": "lineal",
+        "pixel_coordinate": "py (hacia abajo)",
+        "formula": "y = 0.4 + (py − 668.5)·(1.1 − 0.4)/(90.5 − 668.5)"
+      }
+    },
+    "image_file": "01_curva_simple.png",
+    "image_sha256": "2febd278e40e1c288b783020c5e8dcbf36eda728c2f7e9f177d0d9b742e4054b",
+    "image_size_px": [
+      1200,
+      750
+    ],
+    "digitizer": {
+      "algorithm": "pemfc-modellab/raster-trace-digitizer",
+      "version": "1.0.0",
+      "method": "automático + corrección manual",
+      "selected_trace": "C1",
+      "roi_px": [
+        154.47543089770602,
+        95.0,
+        1078.0,
+        664.5082749215579
+      ],
+      "plot_box_px": [
+        150.47543089770602,
+        91.0,
+        1082.0,
+        668.5082749215579
+      ],
+      "params": {
+        "n_points": 40,
+        "alpha_min": 0.65,
+        "color_tolerance": 45.0,
+        "min_span_fraction": 0.08,
+        "trim_caps": true,
+        "exclude_legends": true,
+        "roi": null,
+        "panel_index": null
+      }
+    },
+    "digitization_resolution": {
+      "x_per_px": 0.0016120365394948952,
+      "y_per_px": 0.0012110726643598617,
+      "x_unit": "A/cm²",
+      "y_unit": "V",
+      "sigma_dig_y": 0.0006055363321799309,
+      "sigma_dig_x": 0.0008060182697474476,
+      "line_thickness_px": 5.0,
+      "basis": "±0,5 px de cuantización y colocación de anclas, convertidos con la pendiente de calibración"
+    },
+    "digitization_files": {
+      "audit_json": "01_curva_simple__fixture01_digitalizada__digitalizacion.json",
+      "points_csv": "01_curva_simple__fixture01_digitalizada__digitalizacion.csv",
+      "overlay_png": "01_curva_simple__fixture01_digitalizada__overlay.png"
+    }
+  },
+  "transformations": [
+    "Imagen original 01_curva_simple.png (1200×750 px, PNG, SHA-256 2febd278e40e1c28…).",
+    "Extracción automático + corrección manual con pemfc-modellab/raster-trace-digitizer v1.0.0; candidato C1; ROI px (154.5, 95.0, 1078.0, 664.5).",
+    "Ediciones manuales: 2 movido(s), 0 añadido(s), 0 borrado(s); 0 excluido(s) del ajuste.",
+    "Calibración X (lineal): px 150.000→0, px 1080.500→1.5 [A/cm²].",
+    "Calibración Y (lineal): py 668.500→0.4, py 90.500→1.1 [V celda] (py crece hacia abajo; sin inversión adicional).",
+    "40 punto(s) píxel→físico; los píxeles se conservan como fuente geométrica (JSON 01_curva_simple__fixture01_digitalizada__digitalizacion.json)."
+  ],
+  "warnings": [
+    "La tensión aumenta con la corriente en 2 tramo(s): posible ruido, histéresis o error de datos."
+  ],
+  "points": {
+    "j_A_cm2": [
+      0.039494895217624934,
+      0.07487703054602572,
+      0.11025916587442651,
+      0.14564130120282726,
+      0.1810234365312281,
+      0.21640557185962878,
+      0.25178770718802956,
+      0.28716983675895025,
+      0.32255197784483114,
+      0.3579341131732319,
+      0.3933162485016327,
+      0.4286983838300335,
+      0.46408051915843423,
+      0.499462654486835,
+      0.5348447898152358,
+      0.5702269251436366,
+      0.6056090604720373,
+      0.6409911958004381,
+      0.6763733311288389,
+      0.7117554664572399,
+      0.7471376017856405,
+      0.7825197371140412,
+      0.8179018724424421,
+      0.8532840077708428,
+      0.8886661430992435,
+      0.9240482784276444,
+      0.9594304137560451,
+      0.9948125490844459,
+      1.0301946844128467,
+      1.0655768197412476,
+      1.1009589550696481,
+      1.136341090398049,
+      1.1717232257264498,
+      1.2071053610548506,
+      1.2424874963832513,
+      1.277869631711652,
+      1.313251767040053,
+      1.3486339023684537,
+      1.3840160376968544,
+      1.4193981730252552
+    ],
+    "V_cell_V": [
+      0.9619613653981891,
+      0.9409822504599554,
+      0.9,
+      0.9053023876357963,
+      0.8895162999766588,
+      0.8745954775733068,
+      0.860369304332424,
+      0.8917453647292564,
+      0.8333261365135577,
+      0.8203316397195061,
+      0.8075862387247079,
+      0.7950467231021692,
+      0.782657881504486,
+      0.7703952013107843,
+      0.7582245097892528,
+      0.7461275655503359,
+      0.7340822667414058,
+      0.722067365464677,
+      0.7100804482330176,
+      0.6980932452568455,
+      0.6861049727401007,
+      0.6740949748915941,
+      0.6620670105456423,
+      0.6500012985429833,
+      0.6378993770069551,
+      0.625749299975986,
+      0.6135540048027679,
+      0.6013023001052906,
+      0.588993728338777,
+      0.5766193818865163,
+      0.5641795252110597,
+      0.5516709491230452,
+      0.5390876664602947,
+      0.5264246293033403,
+      0.5136886853488389,
+      0.5008698699840944,
+      0.4879577589312372,
+      0.4749737340630801,
+      0.4618962331443178,
+      0.4487393886919453
+    ]
+  }
+}
