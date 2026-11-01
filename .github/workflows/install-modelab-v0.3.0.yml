@@ -1,0 +1,58 @@
+name: Install PEMFC ModelLab v0.3.0 from ZIP
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'PEMFC_ModelLab_v0.3.0.zip'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Validate archive before modifying repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+          src = Path("PEMFC_ModelLab_v0.3.0.zip")
+          if not src.is_file(): raise ValueError("ZIP not found in repository root")
+          out = Path("/tmp/modelab-release")
+          out.mkdir(exist_ok=True)
+          with zipfile.ZipFile(src) as z:
+              bad = z.testzip()
+              if bad: raise ValueError(f"Corrupt entry: {bad}")
+              for entry in z.infolist():
+                  p = Path(entry.filename)
+                  mode = (entry.external_attr >> 16) & 0o170000
+                  if p.is_absolute() or ".." in p.parts or mode == 0o120000:
+                      raise ValueError(f"Unsafe ZIP entry: {entry.filename}")
+                  if any(part in {".git", ".github"} for part in p.parts):
+                      raise ValueError(f"Protected entry: {entry.filename}")
+              z.extractall(out)
+          root = out / "PEMFC-ModelLab"
+          for required in ("app.py", "requirements.txt", "pemfc_core", "identification", "ui", "tests"):
+              if not (root / required).exists(): raise ValueError(f"Missing {required}")
+          if sorted(p.name for p in out.iterdir()) != ["PEMFC-ModelLab"]:
+              raise ValueError("Unexpected archive layout")
+          print("v0.3.0 archive validated")
+          PY
+      - name: Install release into main
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .github -exec rm -rf -- {} +
+          cp -a /tmp/modelab-release/PEMFC-ModelLab/. .
+          rm -f .github/workflows/install-modelab-v0.2.0.yml
+          test -f app.py
+          test -f requirements.txt
+          git add -A
+          if git diff --cached --quiet; then exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -m "feat: release PEMFC ModelLab v0.3.0"
+          git push origin HEAD:main
