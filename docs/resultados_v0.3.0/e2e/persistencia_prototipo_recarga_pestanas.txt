@@ -1,0 +1,4 @@
+1ª carga: ['snapshot: {}']
+tras guardar: ['ack: 1']
+tras RECARGA (sesión nueva): ['snapshot: {"device:1": "{"name": "Stack Ballard 9SSL"}"}']
+otra pestaña: ['snapshot: {"device:1": "{"name": "Stack Ballard 9SSL"}"}']

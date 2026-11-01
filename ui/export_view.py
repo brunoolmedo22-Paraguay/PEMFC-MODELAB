@@ -12,6 +12,18 @@ from pemfc_core import model as core
 
 from . import state
 
+_EXPORT_HOOK: dict = {"fn": None}
+
+
+def set_export_hook(fn) -> None:
+    """Registro opcional de exportaciones (v0.3.0: historial del dispositivo). No altera el contenido exportado."""
+    _EXPORT_HOOK["fn"] = fn
+
+
+def _fire(kind: str, filename: str, data: bytes) -> None:
+    if _EXPORT_HOOK["fn"] is not None:
+        _EXPORT_HOOK["fn"](kind, filename, data)
+
 
 def _export_section() -> None:
     result = st.session_state.fit_result
@@ -38,9 +50,11 @@ def _export_section() -> None:
         f"{'Utilizable' if usable else 'NO utilizable'} para simulación. Capacidad predictiva: "
         f"{prof['status']['predictive_capability']}.")
     c1, c2 = st.columns(2)
-    c1.download_button("Descargar profile.json", profile_to_json(prof).encode("utf-8"),
+    prof_bytes = profile_to_json(prof).encode("utf-8")
+    c1.download_button("Descargar profile.json", prof_bytes,
                        file_name=f"{prof['profile_id']}_profile.json", mime="application/json",
-                       width="stretch", key="dl_profile")
+                       width="stretch", key="dl_profile", on_click=_fire,
+                       args=("profile.json", f"{prof['profile_id']}_profile.json", prof_bytes))
     if st.session_state.get("zip_key") != st.session_state.fit_key:
         st.session_state.zip_bytes = None
     if c2.button("Preparar ZIP del experimento", width="stretch", key="prep_zip"):
@@ -50,7 +64,8 @@ def _export_section() -> None:
     if st.session_state.get("zip_bytes"):
         c2.download_button("Descargar ZIP del experimento", st.session_state.zip_bytes,
                            file_name=f"pemfc_modellab_{prof['profile_id']}.zip", mime="application/zip",
-                           width="stretch", key="dl_zip")
+                           width="stretch", key="dl_zip", on_click=_fire,
+                           args=("zip", f"pemfc_modellab_{prof['profile_id']}.zip", st.session_state.zip_bytes))
     st.caption("El ZIP contiene profile.json, report.md, datos originales y normalizados, resultados CSV y figuras PNG; "
                "todo legible sin ejecutar la aplicación. Nada se guarda en el servidor.")
     with st.expander("Ver profile.json"):

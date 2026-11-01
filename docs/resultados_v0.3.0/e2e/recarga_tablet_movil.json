@@ -1,0 +1,21 @@
+{
+ "url_antes": "http://127.0.0.1:8801/?view=device&device=dev-7f648f3d09&draft=drf-fde296d500&step=4&panel=flujo",
+ "tras_recarga_etapa4_registrada": true,
+ "tras_recarga_estado": [
+  "Calibración 1 · 01/11/2026 09:35 · perfil pml-bffba1bcc9f39323 — estado AJUSTADO_A_CURVA · validación SIN_VALIDACION_INDEPENDIENTE · ejecutada en ModelLab."
+ ],
+ "config_preservada": [
+  "Preset OTEKON (9 parámetros, reproducción del artículo)",
+  "Preset activo: OTEKON (reproducción, 9 parámetros)"
+ ],
+ "stepper": [
+  "st-completa",
+  "st-completa",
+  "st-completa is-current",
+  "st-completa",
+  "st-completa",
+  "st-progreso"
+ ],
+ "exc": 0,
+ "errs": []
+}

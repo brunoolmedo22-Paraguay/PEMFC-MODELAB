@@ -1,0 +1,4 @@
+01_curva_simple         Curva A   X:CONFIABLE Y:CONFIABLE unidades X=A/cm² Y=V | RMSE [V]: 0.0006878; MAE [V]: 0.0006773; X coverage: 100.0%
+02_dos_curvas           Curva A   X:CONFIABLE Y:CONFIABLE unidades X=A/cm² Y=V | RMSE [V]: 0.0006878; MAE [V]: 0.0006773; X coverage: 100.0%
+02_dos_curvas           Curva B   X:CONFIABLE Y:CONFIABLE unidades X=A/cm² Y=V | RMSE [V]: 0.0006159; MAE [V]: 0.0006042; X coverage: 100.0%
+03_marcadores_y_ruido   Curva A   X:CONFIABLE Y:CONFIABLE unidades X=A/cm² Y=V | RMSE [V]: 0.0006908; MAE [V]: 0.0006753; X coverage: 100.0%

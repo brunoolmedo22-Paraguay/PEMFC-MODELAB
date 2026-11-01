@@ -1,4 +1,4 @@
-"""PEMFC ModelLab — Hito 1: Motor de identificación paramétrica.
+"""PEMFC ModelLab v0.3.0 — Gestión de dispositivos e identificación (Motor 1) + digitalizador.
 
 Ejecutar:  streamlit run app.py
 """
@@ -13,27 +13,24 @@ if str(ROOT) not in sys.path:
 
 import streamlit as st  # noqa: E402
 
-from pemfc_core.schemas import APP_VERSION  # noqa: E402
-from ui import about_view, configure_view, export_view, fit_view, import_view, results_view, state  # noqa: E402
+from ui import about_view, catalog_view, device_view, persistence, shell, state  # noqa: E402
 
 st.set_page_config(page_title="PEMFC ModelLab", page_icon="⚡", layout="wide")
 state.init()
+persistence.init()
+shell.global_css()
+shell.topbar()
 
-st.title("PEMFC ModelLab")
-st.markdown("Identificación paramétrica de células de combustible PEM a partir de curvas de polarización medidas. "
-            f"Motor 1 · v{APP_VERSION}")
-
-tabs = st.tabs(["1. Importar curva", "2. Configurar identificación", "3. Calibrar", "4. Resultados",
-                "5. Exportar perfil", "Alcance y límites"])
-with tabs[0]:
-    import_view.render()
-with tabs[1]:
-    configure_view.render()
-with tabs[2]:
-    fit_view.render()
-with tabs[3]:
-    results_view.render()
-with tabs[4]:
-    export_view.render()
-with tabs[5]:
+route = shell.route()
+if route["view"] == "device":
+    device_view.render()
+elif route["view"] == "digitizer":
+    from ui import digitizer_page  # noqa: E402
+    digitizer_page.render()
+elif route["view"] == "about":
     about_view.render()
+else:
+    catalog_view.render()
+
+# Al final de cada ejecución: envía al navegador los registros modificados (autoguardado).
+persistence.render_bridge()

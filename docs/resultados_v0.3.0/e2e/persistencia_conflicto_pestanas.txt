@@ -1,0 +1,8 @@
+A inicio: ['ESTADO=guardado loaded=True dirty=0 msg=']
+A tras crear: ['ESTADO=guardado loaded=True dirty=0 msg='] ['DISPOSITIVOS=dev-1411bdbc14:Stack Alpha:rev1']
+A tras RECARGA: ['ESTADO=guardado loaded=True dirty=0 msg='] ['DISPOSITIVOS=dev-1411bdbc14:Stack Alpha:rev1'] ['BLOBS_MEM= KNOWN=27783e87'] ['BLOB img.bin AUSENTE']
+A blobs bajo demanda: ['BLOB img.bin OK sha']
+B carga: ['DISPOSITIVOS=dev-1411bdbc14:Stack Alpha:rev1']
+A renombra: ['ESTADO=guardado loaded=True dirty=0 msg='] ['DISPOSITIVOS=dev-1411bdbc14:Alpha editado en A:rev2']
+B renombra (debe ser conflicto): ['ESTADO=conflicto loaded=True dirty=0 msg=Otra pestaña o ventana guardó una versión más reciente de: device:dev-1411bdbc14. Sus cambios en esos registros NO se guardaron (no se sobrescribe). Recargue la página para ver la versión guardada o exporte el proyecto para conservar esta sesión.']
+Lo guardado en el navegador: ['DISPOSITIVOS=dev-1411bdbc14:Alpha editado en A:rev2']

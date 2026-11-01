@@ -1,0 +1,63 @@
+{
+ "eje_X": [
+  "Eje X · Reconocimiento confiable · escala lineal · 7 etiquetas coherentes · RMS 0.07 px · ✔ confirmado"
+ ],
+ "eje_Y": [
+  "Eje Y · Reconocimiento confiable · escala lineal · 4 etiquetas coherentes · RMS 0.31 px · ✔ confirmado"
+ ],
+ "calibrado": true,
+ "unidades": [
+  "Unidades confirmadas (leídas en los títulos de los ejes: «Current Density ( A/cm2)» → A/cm²; «Activation Loss ( Volts )» → V)."
+ ],
+ "panel4_calibrado": true,
+ "vuelta_panel1_curvas": [],
+ "dl_CSV": [
+  "otekon_figure3_source__datos.csv",
+  8888
+ ],
+ "dl_XLSX": [
+  "otekon_figure3_source__datos.xlsx",
+  16917
+ ],
+ "dl_JSON": [
+  "otekon_figure3_source__datos.json",
+  32301
+ ],
+ "dl_PNG": [
+  "otekon_figure3_source__overlay.png",
+  119978
+ ],
+ "dl_ZIP": [
+  "otekon_figure3_source__digitalizacion.zip",
+  272464
+ ],
+ "csv_curvas": [
+  "P1_curva_1",
+  "P4_curva_1"
+ ],
+ "csv_filas": 80,
+ "json_paneles": [
+  1,
+  4
+ ],
+ "csv_igual_json": true,
+ "csv_igual_xlsx": true,
+ "zip": [
+  "LEEME.txt",
+  "auditoria/panel_1.json",
+  "auditoria/panel_4.json",
+  "datos.csv",
+  "datos.json",
+  "datos.xlsx",
+  "original/otekon_figure3_source.png",
+  "overlay.png"
+ ],
+ "unidades_csv": [
+  [
+   "A/cm²",
+   "V"
+  ]
+ ],
+ "exc": 0,
+ "errs": []
+}

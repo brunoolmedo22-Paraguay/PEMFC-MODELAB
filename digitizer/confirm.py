@@ -110,6 +110,10 @@ def build_digitized_curve(draft: DigitizationDraft, meta: CurveMetadata, conditi
     cal, cal_errors, cal_warns = draft.calibration()
     for m in cal_errors:
         E(f"Calibración: {m}")
+    ready, why = draft.physical_ready()
+    if cal is not None and not ready:
+        for m in why:
+            E(f"Confirmación pendiente: {m}")
     if cal is None:
         return ConfirmationResult(None, issues)
     try:
@@ -163,6 +167,11 @@ def build_digitized_curve(draft: DigitizationDraft, meta: CurveMetadata, conditi
         "source_kind": "imagen_digitalizada", "current_unit": draft.current_unit,
         "voltage_unit": draft.voltage_unit, "voltage_basis": draft.voltage_basis,
         "axis_scales": dict(draft.scales), "anchors_px": anchors, "calibration": cal.to_dict(),
+        "axis_recognition": {k: {"status": v.status, "scale": v.scale, "n_inliers": v.n_inliers,
+                                 "rms_px": v.rms_px, "multiplier": v.multiplier, "engine": v.engine,
+                                 "labels": [(l.text, l.effective_value, l.inlier) for l in v.labels]}
+                             for k, v in draft.axis_recognition.items()},
+        "axis_confirmed": dict(draft.axis_confirmed), "units_source": draft.units_source,
         "image_file": img_name, "image_sha256": img.sha256, "image_size_px": [img.width, img.height],
         "digitizer": {"algorithm": ALGORITHM_ID, "version": DIGITIZER_VERSION,
                       "method": draft.extraction_method, "selected_trace": draft.selected_candidate,

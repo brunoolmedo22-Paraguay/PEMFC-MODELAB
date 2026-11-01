@@ -1,0 +1,28 @@
+.stp { padding: 4px 0 2px; }
+.stp-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0; position: relative; }
+.stp-list::before { content: ""; position: absolute; left: 22px; right: 22px; top: 21px; height: 3px; border-radius: 3px; background: var(--pml-border); }
+.stp-list::after { content: ""; position: absolute; left: 22px; top: 21px; height: 3px; border-radius: 3px; width: calc((100% - 44px) * var(--fill) / 100%);
+  background: var(--pml-accent); transition: width .35s ease; }
+.stp-item { position: relative; z-index: 1; min-width: 0; }
+.stp-btn { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; padding: 0 8px 6px 0; cursor: pointer; }
+.stp-btn:disabled { cursor: not-allowed; }
+.stp-btn:focus-visible .stp-dot { box-shadow: 0 0 0 4px color-mix(in srgb, var(--pml-accent) 30%, transparent); }
+.stp-dot { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 13.5px; font-variant-numeric: tabular-nums;
+  background: var(--pml-bg); border: 2px solid var(--pml-border); color: var(--pml-muted); transition: all .22s ease; }
+.stp-txt { display: flex; flex-direction: column; min-width: 0; }
+.stp-num { display: none; }
+.stp-ttl { font-weight: 650; font-size: 13.5px; line-height: 1.2; color: var(--pml-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stp-state { font-size: 11.5px; color: var(--pml-muted); line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.st-completa .stp-dot { background: var(--pml-accent); border-color: var(--pml-accent); color: #fff; }
+.st-progreso .stp-dot { border-color: var(--pml-accent); color: var(--pml-accent); }
+.st-atencion .stp-dot { border-color: #C77700; color: #C77700; background: color-mix(in srgb, #C77700 10%, var(--pml-bg)); }
+.st-atencion .stp-state { color: #B06A00; }
+.st-bloqueada .stp-dot { opacity: .65; font-size: 12px; } .st-bloqueada .stp-ttl { color: var(--pml-muted); }
+.is-current .stp-dot { transform: scale(1.08); box-shadow: 0 0 0 5px color-mix(in srgb, var(--pml-accent) 16%, transparent); }
+.is-current .stp-ttl { color: var(--pml-accent); }
+.stp-btn:not(:disabled):hover .stp-dot { border-color: var(--pml-accent); }
+@media (max-width: 900px) {
+  .stp-ttl { white-space: normal; font-size: 12px; } .stp-state { display: none; } .stp-dot { width: 36px; height: 36px; font-size: 12px; }
+  .stp-list::before, .stp-list::after { top: 17px; left: 18px; } .stp-list::before { right: 18px; } .stp-list::after { width: calc((100% - 36px) * var(--fill) / 100%); }
+}
+@media (max-width: 560px) { .stp-txt { display: none; } .is-current .stp-txt { display: flex; position: absolute; top: 44px; left: 0; width: 160px; } .stp { padding-bottom: 30px; } }

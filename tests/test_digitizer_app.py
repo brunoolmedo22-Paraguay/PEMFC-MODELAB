@@ -6,7 +6,7 @@ estado de sesión, el bloqueo sin calibración, la confirmación y el aislamient
 """
 from pathlib import Path
 
-from streamlit.testing.v1 import AppTest
+from ui_driver import goto, open_workspace
 
 ROOT = Path(__file__).resolve().parents[1]
 APP = str(ROOT / "app.py")
@@ -15,10 +15,7 @@ PNG = (FX / "01_curva_simple.png").read_bytes()
 
 
 def _app():
-    at = AppTest.from_file(APP, default_timeout=180)
-    at.run()
-    assert not at.exception
-    return at
+    return open_workspace(step=2, name="Dispositivo digitalizado")
 
 
 def _btn(at, label):
@@ -46,7 +43,7 @@ def _metadata(at, cid="dig_app"):
 
 
 def _device(at):
-    at.text_input(key="dev_name").set_value("Dispositivo digitalizado").run()
+    """v0.3.0: el dispositivo se crea en el catálogo y se edita en la etapa 01."""
 
 
 def test_upload_triggers_detection_and_blocks_without_calibration():
@@ -55,14 +52,11 @@ def test_upload_triggers_detection_and_blocks_without_calibration():
     _open_and_upload(at)
     d = at.session_state.dz_draft
     assert len(d.points) == 40 and d.selected_candidate == "C1"
-    assert any("REQUIERE_CALIBRACION" in w.value for w in at.warning)
-    assert any("calibración pendiente" in w.value for w in at.warning)
-    assert _btn(at, "Confirmar y añadir curva").disabled
+    # v0.3.0: valores de los ejes reconocidos automáticamente (OCR + verificación geométrica)
+    assert d.is_calibrated and d.axis_confirmed == {"X": True, "Y": True} and d.units_confirmed
+    assert at.text_input(key="dz_val_X2").value == "1.5" and at.text_input(key="dz_val_Y2").value == "1.1"
+    assert _btn(at, "Confirmar y añadir curva").disabled          # faltan condiciones de medición
     assert at.session_state.curves == []
-    _calibrate(at)
-    assert at.session_state.dz_draft.is_calibrated
-    assert any("Calibrado" in s.value for s in at.success)
-    assert _btn(at, "Confirmar y añadir curva").disabled          # faltan condiciones
 
 
 def test_confirm_adds_digitized_curve_to_existing_flow_and_fit_runs():
@@ -82,6 +76,10 @@ def test_confirm_adds_digitized_curve_to_existing_flow_and_fit_runs():
     assert any(k.endswith("__digitalizacion.json") for k in at.session_state.originals)
     assert not at.session_state.dz_open
     assert any("añadida" in s.value for s in at.success)
+    dr = at.session_state.ws.drafts[at.session_state.route["draft"]]
+    assert len(dr.curves) == n0 + 1 and "01_curva_simple.png" in dr.originals        # volcado al borrador
+    goto(at, 3)
+    goto(at, 4)
     at.button(key="run_fit").click().run()
     assert not at.exception and at.session_state.fit_result is not None
     assert at.session_state.profile["status"]["code"] != "VALIDADO_EXPERIMENTALMENTE"
@@ -91,8 +89,14 @@ def test_cancel_keeps_dataset_fit_and_profile():
     at = _app()
     at.radio(key="src_mode").set_value("Ejemplos documentados").run()
     at.button(key="ex_otekon").click().run()
+    goto(at, 3)
     _btn(at, "Preset OTEKON (9 parámetros, reproducción del artículo)").click().run()
+    goto(at, 4)
     at.button(key="run_fit").click().run()
+    goto(at, 2)
+    ws = at.session_state.ws
+    draft_before = ws.record_value(f"draft:{at.session_state.route['draft']}")
+    n_cal = len(ws.calibrations)
     before = (at.session_state.data_key if hasattr(at.session_state, "data_key") else None,
               [c.normalized_sha256 for c in at.session_state.curves], at.session_state.fit_key,
               at.session_state.profile["profile_id"], dict(at.session_state.originals).keys(),
@@ -107,6 +111,8 @@ def test_cancel_keeps_dataset_fit_and_profile():
              at.session_state.dataset_label, id(at.session_state.fit_result))
     assert before == after
     assert "dz_draft" not in at.session_state and not at.session_state.dz_open
+    assert ws.record_value(f"draft:{at.session_state.route['draft']}") == draft_before     # borrador intacto
+    assert len(ws.calibrations) == n_cal
 
 
 def test_errors_keep_dialog_open_and_dataset_intact():
@@ -135,7 +141,7 @@ def test_corrupt_and_svg_images_are_recoverable():
 def test_new_image_with_edited_draft_asks_before_discarding():
     at = _app()
     _open_and_upload(at)
-    _calibrate(at)
+    _calibrate(at, (("X2", "1.4"),))                                   # edición real del usuario
     d = at.session_state.dz_draft
     sha = d.image.sha256
     other = (FX / "02_dos_curvas.png").read_bytes()

@@ -1,0 +1,25 @@
+/* PEMFC ModelLab — kit visual compartido por los componentes (hereda las variables del tema de Streamlit). */
+:host, .pml { --pml-accent: var(--st-primary-color, #0E7C86); --pml-text: var(--st-text-color, #132030);
+  --pml-bg: var(--st-background-color, #F5F7FA); --pml-surface: var(--st-secondary-background-color, #E9EEF3);
+  --pml-border: var(--st-border-color, rgba(19,32,48,.16)); --pml-muted: color-mix(in srgb, var(--pml-text) 62%, transparent);
+  --pml-card: color-mix(in srgb, var(--pml-bg) 70%, white 30%);
+  --pml-shadow: 0 1px 2px rgba(10,20,30,.06), 0 4px 14px rgba(10,20,30,.06);
+  --pml-shadow-hi: 0 2px 4px rgba(10,20,30,.08), 0 12px 28px rgba(10,20,30,.12);
+  --pml-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --s-new: #5B6B7C; --s-incomplete: #C77700; --s-progress: #2F6FED; --s-fitted: #0E7C86; --s-validated: #2E8B57; --s-danger: #C2364A;
+  font-family: var(--st-font, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif); color: var(--pml-text); }
+@media (prefers-color-scheme: dark) { :host, .pml { --pml-card: color-mix(in srgb, var(--pml-bg) 82%, white 6%); } }
+.pml * { box-sizing: border-box; }
+.pml-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; letter-spacing: .02em;
+  padding: 3px 9px; border-radius: 999px; border: 1px solid currentColor; line-height: 1.35; white-space: nowrap; }
+.pml-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pml-badge.s-NUEVO { color: var(--s-new); } .pml-badge.s-CONFIGURACION_INCOMPLETA { color: var(--s-incomplete); }
+.pml-badge.s-EN_CALIBRACION { color: var(--s-progress); } .pml-badge.s-PERFIL_AJUSTADO { color: var(--s-fitted); }
+.pml-badge.s-PERFIL_CON_VALIDACION { color: var(--s-validated); }
+.pml-chip { white-space: nowrap; font-family: var(--pml-mono); font-size: 11px; padding: 2px 7px; border-radius: 6px; background: var(--pml-surface);
+  color: var(--pml-muted); border: 1px solid var(--pml-border); }
+.pml-input, .pml-select { font: inherit; font-size: 14px; color: var(--pml-text); background: var(--pml-card);
+  border: 1px solid var(--pml-border); border-radius: 9px; padding: 8px 11px; outline: none; transition: border-color .15s, box-shadow .15s; }
+.pml-input:focus, .pml-select:focus { border-color: var(--pml-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pml-accent) 22%, transparent); }
+@keyframes pml-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pml * { animation: none !important; transition: none !important; } }

@@ -1,14 +1,38 @@
-# PEMFC ModelLab v0.2.0 — Motor 1 de identificación paramétrica + digitalizador de curvas
+# PEMFC ModelLab v0.3.0 — Gestión de dispositivos e identificación (Motor 1) + digitalizador inteligente
 
-Aplicación Python + Streamlit para identificar los parámetros de un modelo semiempírico de célula de combustible
-PEM a partir de **curvas de polarización medidas o digitalizadas**, y obtener un **perfil PEMFC trazable y
-reutilizable** (`profile.json`) y un ZIP de experimento con datos, resultados, figuras y reporte.
+Plataforma Streamlit para **incorporar, caracterizar, calibrar y administrar dispositivos PEMFC** y generar perfiles
+electroquímicos reproducibles, más un **digitalizador científico** que convierte figuras en tablas X–Y.
 
-> **Alcance.** Solo Motor 1 (identificación). La curva V–I es obligatoria: no se crean perfiles a partir de un
-> datasheet sin curva. Desde v0.2.0 la curva puede **digitalizarse desde una imagen** con un editor asistido; los
-> valores de los ejes los confirma siempre el usuario (sin OCR) y la curva queda con calidad «digitalizado». El
-> Motor 2 (simulación operacional, H₂, costes) no está implementado. Un buen ajuste no es una validación
-> experimental independiente.
+> **Alcance.** Solo Motor 1 (identificación paramétrica); el Motor 2 (simulación operacional, H₂, costes) no está
+> implementado. La curva V–I es obligatoria. Un buen ajuste no es una validación experimental independiente.
+> Nunca se inventan valores de ejes, unidades, N_cells, A_active ni σ_V.
+
+**Dos flujos integrados visualmente y desacoplados en su lógica científica:**
+
+1. **Motor 1:**
+   - catálogo de dispositivos → crear un dispositivo;
+   - flujo guiado de 01 Dispositivo a 06 Perfil y exportación;
+   - historial de calibraciones, perfil activo y comparación.
+2. **Digitalizador:**
+   - cargar una figura → reconocimiento automático de paneles, ejes, números (OCR local verificado geométricamente), unidades y curvas;
+   - corregir si hace falta;
+   - exportar CSV, XLSX, JSON, PNG o ZIP sin pasar por el Motor 1.
+
+**Persistencia:**
+- **Automática:** se guarda en el navegador (IndexedDB) y sobrevive a recargas.
+- **Proyecto portátil `.pmlproj.zip`:** permite conservar el trabajo con independencia del navegador.
+- **Sin cuentas ni servicios externos.** Las garantías reales están en `docs/ARQUITECTURA_v0.3.0.md` §3.
+
+**Documentación:**
+- `docs/GUIA_USUARIO.md`: guía de usuario.
+- `docs/ARQUITECTURA_v0.3.0.md`: arquitectura, persistencia, OCR, calibración geométrica, exportaciones y compatibilidad.
+- `docs/VERIFICACION_v0.3.0.md`: verificación y limitaciones.
+- `CHANGELOG.md`: cambios por versión.
+
+| | |
+|---|---|
+| ![Catálogo](docs/capturas/v0.3.0/09_catalogo_con_dispositivo.png) | ![Flujo guiado](docs/capturas/v0.3.0/06_etapa04_calibracion.png) |
+| ![Digitalizador](docs/capturas/v0.3.0/21_digitalizador_reconocimiento.png) | ![Historial](docs/capturas/v0.3.0/11_historial.png) |
 
 ## Uso local
 
@@ -62,12 +86,13 @@ algoritmo y limitaciones en `docs/DIGITALIZADOR.md`; verificación en `docs/VERI
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest -q                      # 110 pruebas (incluye digitalizador y flujos AppTest)
+python -m pytest -q                      # 200 pruebas (núcleo, digitalizador, OCR, espacio de trabajo, AppTest)
 python tools/reproduce_otekon.py         # baseline OTEKON (RMSE 0,001411370003309 V/celda)
 python tools/evaluate_digitizer.py       # exactitud del digitalizador frente a los truth sintéticos y la figura OTEKON
 ```
 
-Las pruebas en navegador real (Playwright) están en `tools/e2e/` (ver su README). Resultados de la última ejecución:
+Las pruebas en navegador real (Playwright) están en `tools/e2e/`: `e2e_v030_*.py` para v0.3.0 y el resto para el
+digitalizador de v0.2.0 (ver su README). Resultados de la última ejecución:
 `docs/VERIFICACION.md` (v0.1.0) y `docs/VERIFICACION_DIGITALIZADOR.md` (v0.2.0).
 
 ## Despliegue en Streamlit Community Cloud

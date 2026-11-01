@@ -1,0 +1,35 @@
+{
+ "ejes": [
+  "Eje X · Reconocimiento confiable · escala lineal · 6 etiquetas coherentes · RMS 0.00 px · ✔ confirmado",
+  "Eje Y · Reconocimiento confiable · escala lineal · 8 etiquetas coherentes · RMS 0.24 px · ✔ confirmado"
+ ],
+ "valores": {
+  "X1": {
+   "px": 150.5,
+   "py": 668.5082749215579,
+   "label": "0"
+  },
+  "X2": {
+   "px": 1080.5,
+   "py": 668.5082749215579,
+   "label": "1.5"
+  },
+  "Y1": {
+   "px": 150.47543089770602,
+   "py": 668.5,
+   "label": "0.4"
+  },
+  "Y2": {
+   "px": 150.47543089770602,
+   "py": 90.5,
+   "label": "1.1"
+  }
+ },
+ "confirmar_habilitado": true,
+ "anadida": [
+  "Borrador en curso: 01_curva_simple.png (40 puntos; ya añadida(s): auto_ocr). Al abrir el digitalizador se restaura."
+ ],
+ "dialogo_cerrado": true,
+ "exc": 0,
+ "errs": []
+}

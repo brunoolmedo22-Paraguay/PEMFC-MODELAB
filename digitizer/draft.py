@@ -86,11 +86,22 @@ class DigitizationDraft:
     confirmed_curve_ids: list[str] = field(default_factory=list)
     created_utc: str = field(default_factory=_now)
     last_error: str | None = None
+    # v0.3.0 — reconocimiento automático de ejes (OCR + geometría), confirmaciones y curvas guardadas
+    ocr_enabled: bool = True
+    axis_recognition: dict = field(default_factory=dict)        # "X"/"Y" → AxisRecognition
+    axis_confirmed: dict = field(default_factory=lambda: {"X": False, "Y": False})
+    units_confirmed: bool = False
+    units_source: str = ""
+    x_unit_text: str = ""                                       # unidad libre (exportación autónoma)
+    y_unit_text: str = ""
+    saved_curves: list = field(default_factory=list)            # curvas guardadas de este panel
+    panel_index: int | None = None
 
     # ------------------------------------------------------------------ creación
     @classmethod
-    def from_image(cls, image: LoadedImage, params: DetectionParams | None = None) -> "DigitizationDraft":
-        d = cls(image=image, params=params or DetectionParams())
+    def from_image(cls, image: LoadedImage, params: DetectionParams | None = None,
+                   ocr: bool = True) -> "DigitizationDraft":
+        d = cls(image=image, params=params or DetectionParams(), ocr_enabled=ocr)
         d.anchors = {n: Anchor(n) for n in ANCHOR_NAMES}
         d._log("imagen_cargada", image.describe())
         d.run_detection(initial=True)
@@ -145,6 +156,9 @@ class DigitizationDraft:
             self._points_from_candidate(best)
         self.extraction_method = "automático"
         self._log("deteccion_automatica", {"summary": res.summary(), "selected": self.selected_candidate})
+        self.panel_index = res.panel_index
+        if self.ocr_enabled and res.panel_index is not None and res.panels:
+            self._recognize_axes()
         self._bump()
 
     def _points_from_candidate(self, cand: TraceCandidate) -> None:
@@ -158,7 +172,11 @@ class DigitizationDraft:
         return {"points": [p.to_dict() for p in self.points], "anchors": {k: a.to_dict() for k, a in self.anchors.items()},
                 "roi": self.roi, "selected_candidate": self.selected_candidate, "scales": dict(self.scales),
                 "next_id": self.next_id, "extraction_method": self.extraction_method,
-                "deleted_points": copy.deepcopy(self.deleted_points)}
+                "deleted_points": copy.deepcopy(self.deleted_points),
+                "axis_confirmed": dict(self.axis_confirmed), "units_confirmed": self.units_confirmed,
+                "axis_recognition": copy.deepcopy(self.axis_recognition),
+                "saved_curves": copy.deepcopy(self.saved_curves),
+                "units": (self.current_unit, self.voltage_unit, self.voltage_basis, self.x_unit_text, self.y_unit_text)}
 
     def _set_state(self, s: dict) -> None:
         self.points = [DraftPoint(**p) for p in s["points"]]
@@ -169,6 +187,12 @@ class DigitizationDraft:
         self.next_id = s["next_id"]
         self.extraction_method = s["extraction_method"]
         self.deleted_points = copy.deepcopy(s["deleted_points"])
+        self.axis_confirmed = dict(s.get("axis_confirmed", self.axis_confirmed))
+        self.units_confirmed = s.get("units_confirmed", self.units_confirmed)
+        self.axis_recognition = copy.deepcopy(s.get("axis_recognition", self.axis_recognition))
+        self.saved_curves = copy.deepcopy(s.get("saved_curves", self.saved_curves))
+        if "units" in s:
+            (self.current_unit, self.voltage_unit, self.voltage_basis, self.x_unit_text, self.y_unit_text) = s["units"]
 
     def _push_undo(self) -> None:
         self.undo_stack.append(self._state())
@@ -341,6 +365,8 @@ class DigitizationDraft:
         old = a.value
         a.value = v
         a.edited = True
+        a.source = "usuario"
+        self.axis_confirmed[name[0]] = True        # el usuario declara el valor: calibración manual de ese eje
         self._log("valor_ancla", {"ancla": name, "de": old, "a": v})
         self._bump()
         return True
@@ -376,6 +402,8 @@ class DigitizationDraft:
             return False
         self._log("unidades", {"de": [self.current_unit, self.voltage_unit, self.voltage_basis], "a": list(new)})
         self.current_unit, self.voltage_unit, self.voltage_basis = new
+        self.units_confirmed, self.units_source = True, "elegidas por el usuario"
+        self.x_unit_text, self.y_unit_text = new[0], new[1]
         self._bump()
         return True
 
@@ -611,6 +639,11 @@ class DigitizationDraft:
                 if outbox:
                     w.append(f"{len(outbox)} punto(s) fuera del área de trazado detectada (ids {outbox[:8]}): "
                              "exclúyalos o corríjalos; no se recortan automáticamente.")
+        for axis, rec in self.axis_recognition.items():
+            if not self.axis_confirmed.get(axis) and rec.status != "CONFIABLE":
+                w.append(f"Eje {axis}: {rec.status} — " + "; ".join(rec.reasons[:3]))
+        if not self.units_confirmed:
+            w.append("Unidades no confirmadas: elíjalas o confírmelas explícitamente.")
         if any(a.source == "auto-marco" and not a.edited for a in self.anchors.values()):
             w.append("Alguna ancla propuesta está en el borde del marco (sin tick detectado): confirme su posición.")
         if self.manually_edited:
@@ -618,6 +651,200 @@ class DigitizationDraft:
             w.append(f"Trazo intervenido manualmente: {c['movidos']} movido(s), {c['añadidos']} añadido(s), "
                      f"{c['borrados']} borrado(s).")
         return list(dict.fromkeys(w))
+
+
+    # ------------------------------------------------------------------ reconocimiento de ejes (v0.3.0)
+    def _recognize_axes(self) -> None:
+        from .axis_ocr import recognize_axes
+        res = self.detection
+        try:
+            recs = recognize_axes(self.image.rgb, res.panels[res.panel_index], res.ticks, res.background_rgb)
+        except Exception as exc:  # noqa: BLE001 — el reconocimiento nunca bloquea el modo manual
+            self._log("ocr_fallido", {"error": str(exc)})
+            return
+        self.axis_recognition = recs
+        self._log("reconocimiento_ejes", {k: v.to_dict() for k, v in recs.items()})
+        for axis in ("X", "Y"):
+            self._apply_axis(axis)
+        self._apply_units()
+
+    def _tick_spacing(self, axis: str) -> float | None:
+        t = self.detection.ticks.get(axis) if self.detection else None
+        if t and len(t.positions) > 1:
+            return float(np.median(np.diff(sorted(t.positions))))
+        return None
+
+    def _apply_axis(self, axis: str) -> None:
+        """Lleva el reconocimiento de un eje a sus anclas (nunca pisa anclas editadas por el usuario)."""
+        from .axis_ocr import ST_RELIABLE
+        rec = self.axis_recognition.get(axis)
+        names = ("X1", "X2") if axis == "X" else ("Y1", "Y2")
+        if rec is None or len(rec.anchors) < 2:
+            self.axis_confirmed[axis] = False if not any(self.anchors[n].edited for n in names) else self.axis_confirmed[axis]
+            return
+        if any(self.anchors[n].edited and self.anchors[n].source == "usuario" for n in names):
+            return
+        mult = rec.multiplier or 1.0
+        (p_lo, v_lo), (p_hi, v_hi) = sorted(rec.anchors)
+        pb = self.plot_box
+        if axis == "X":
+            py = pb[3] if pb else None
+            self.anchors["X1"] = Anchor("X1", px=p_lo, py=py, value=v_lo * mult, source="auto-ocr")
+            self.anchors["X2"] = Anchor("X2", px=p_hi, py=py, value=v_hi * mult, source="auto-ocr")
+        else:
+            px = pb[0] if pb else None      # Y1 = referencia inferior (py mayor)
+            self.anchors["Y1"] = Anchor("Y1", px=px, py=p_hi, value=v_hi * mult, source="auto-ocr")
+            self.anchors["Y2"] = Anchor("Y2", px=px, py=p_lo, value=v_lo * mult, source="auto-ocr")
+        if rec.scale:
+            self.scales[axis] = rec.scale
+        self.axis_confirmed[axis] = rec.status == ST_RELIABLE
+
+    def _apply_units(self) -> None:
+        from pemfc_core import units as u
+        rx, ry = self.axis_recognition.get("X"), self.axis_recognition.get("Y")
+        tx = (rx.title or {}) if rx else {}
+        ty = (ry.title or {}) if ry else {}
+        self.x_unit_text = tx.get("unit") or ""
+        self.y_unit_text = ty.get("unit") or ""
+        ok_x = tx.get("quantity") == "corriente" and tx.get("unit") in u.CURRENT_UNITS
+        ok_y = ty.get("quantity") == "tensión" and ty.get("unit") in u.VOLTAGE_UNITS
+        if ok_x:
+            self.current_unit = tx["unit"]
+        if ok_y:
+            self.voltage_unit = ty["unit"]
+        self.units_confirmed = bool(ok_x and ok_y)
+        if self.units_confirmed:
+            self.units_source = (f"leídas en los títulos de los ejes: «{tx.get('text')}» → {tx['unit']}; "
+                                 f"«{ty.get('text')}» → {ty['unit']}")
+
+    def confirm_axis(self, axis: str) -> bool:
+        cal = self.calibration()[0]
+        names = ("X1", "X2") if axis == "X" else ("Y1", "Y2")
+        if any(self.anchors[n].value is None or self.anchors[n].position is None for n in names):
+            self.last_error = f"Eje {axis}: no hay dos referencias completas que confirmar."
+            return False
+        self._push_undo()
+        self.axis_confirmed[axis] = True
+        self._log("confirmar_eje", {"eje": axis, "anclas": {n: self.anchors[n].to_dict() for n in names},
+                                    "calibrado": cal is not None})
+        self._bump()
+        return True
+
+    def confirm_units(self) -> bool:
+        self._push_undo()
+        self.units_confirmed = True
+        if not self.units_source:
+            self.units_source = "confirmadas por el usuario"
+        self.x_unit_text = self.x_unit_text or self.current_unit
+        self.y_unit_text = self.y_unit_text or self.voltage_unit
+        self._log("confirmar_unidades", {"x": self.current_unit, "y": self.voltage_unit, "base": self.voltage_basis})
+        self._bump()
+        return True
+
+    def set_free_units(self, x_unit: str, y_unit: str) -> bool:
+        """Unidades libres (digitalizador autónomo). Las escribe el usuario: quedan confirmadas."""
+        x_unit, y_unit = str(x_unit).strip(), str(y_unit).strip()
+        if (x_unit, y_unit) == (self.x_unit_text, self.y_unit_text) and self.units_confirmed:
+            return False
+        self._push_undo()
+        self.x_unit_text, self.y_unit_text = x_unit, y_unit
+        self.units_confirmed = bool(x_unit and y_unit)
+        self.units_source = "escritas por el usuario"
+        self._log("unidades_libres", {"x": x_unit, "y": y_unit})
+        self._bump()
+        return True
+
+    def correct_label(self, axis: str, index: int, value: float | None = None, exclude: bool | None = None) -> bool:
+        """Corrige (o excluye) individualmente una etiqueta reconocida y recalcula la geometría."""
+        from .axis_ocr import recompute
+        rec = self.axis_recognition.get(axis)
+        if rec is None or not (0 <= index < len(rec.labels)):
+            return False
+        self._push_undo()
+        lab = rec.labels[index]
+        old = (lab.user_value, lab.excluded_by_user)
+        if value is not None or exclude is None:
+            lab.user_value = None if value is None or (isinstance(value, float) and math.isnan(value)) else float(value)
+        if exclude is not None:
+            lab.excluded_by_user = bool(exclude)
+        new = recompute(rec, self._tick_spacing(axis))
+        self.axis_recognition[axis] = new
+        names = ("X1", "X2") if axis == "X" else ("Y1", "Y2")
+        for n in names:                       # la corrección de etiquetas vuelve a mandar sobre las anclas automáticas
+            if self.anchors[n].source != "usuario":
+                self.anchors[n].edited = False
+        self._apply_axis(axis)
+        self._log("corregir_etiqueta", {"eje": axis, "etiqueta": lab.text, "de": old,
+                                        "a": (lab.user_value, lab.excluded_by_user), "estado": new.status})
+        self._bump()
+        return True
+
+    def physical_ready(self) -> tuple[bool, list[str]]:
+        """¿Se pueden usar los valores físicos de forma definitiva? (calibración + confirmaciones)."""
+        reasons = []
+        cal, errs, _ = self.calibration()
+        if cal is None:
+            reasons += errs or ["Calibración incompleta."]
+        for axis in ("X", "Y"):
+            if not self.axis_confirmed.get(axis):
+                rec = self.axis_recognition.get(axis)
+                why = f" ({rec.status}: {'; '.join(rec.reasons[:2])})" if rec else ""
+                reasons.append(f"Eje {axis} pendiente de confirmación{why}.")
+        if not self.units_confirmed:
+            reasons.append("Unidades no confirmadas (no se detectaron con evidencia en los títulos de los ejes).")
+        return (not reasons), reasons
+
+    def ocr_boxes(self) -> list[dict]:
+        out = []
+        for axis, rec in self.axis_recognition.items():
+            for i, l in enumerate(rec.labels):
+                out.append({"axis": axis, "i": i, "bbox": l.bbox_px, "text": l.text, "value": l.effective_value,
+                            "inlier": l.inlier and not l.excluded_by_user, "user": l.user_value is not None,
+                            "excluded": l.excluded_by_user, "pos": l.position_px})
+            if rec.title:
+                out.append({"axis": axis, "i": -1, "bbox": rec.title["bbox_px"], "text": rec.title["text"],
+                            "value": None, "inlier": rec.title.get("unit") is not None, "title": True,
+                            "unit": rec.title.get("unit")})
+        return out
+
+    # ------------------------------------------------------------------ curvas guardadas del panel
+    def save_curve(self, name: str) -> dict:
+        name = str(name).strip()
+        if not name:
+            raise ValueError("La curva necesita un nombre.")
+        if any(c["name"] == name for c in self.saved_curves):
+            raise ValueError(f"Ya existe una curva guardada llamada {name!r} en este panel.")
+        if not self.points:
+            raise ValueError("No hay puntos que guardar.")
+        self._push_undo()
+        rec = {"name": name, "candidate": self.selected_candidate, "method": self.extraction_method,
+               "saved_utc": _now(), "points": [p.to_dict() for p in self.sorted_points()]}
+        self.saved_curves.append(rec)
+        self._log("guardar_curva", {"curva": name, "n": len(rec["points"]), "candidato": self.selected_candidate})
+        self._bump()
+        return rec
+
+    def delete_saved_curve(self, name: str) -> bool:
+        idx = next((i for i, c in enumerate(self.saved_curves) if c["name"] == name), None)
+        if idx is None:
+            return False
+        self._push_undo()
+        self.saved_curves.pop(idx)
+        self._log("borrar_curva_guardada", {"curva": name})
+        self._bump()
+        return True
+
+    def load_saved_curve(self, name: str) -> bool:
+        rec = next((c for c in self.saved_curves if c["name"] == name), None)
+        if rec is None:
+            return False
+        self._push_undo()
+        self.points = [DraftPoint(**p) for p in rec["points"]]
+        self.next_id = max([p.id for p in self.points] + [self.next_id - 1]) + 1
+        self.selected_candidate = rec.get("candidate")
+        self._log("cargar_curva_guardada", {"curva": name})
+        self._bump()
+        return True
 
     # ------------------------------------------------------------------ serialización
     def to_audit_dict(self) -> dict:
@@ -640,7 +867,13 @@ class DigitizationDraft:
             "calibration": cal.to_dict() if cal else None,
             "calibration_errors": errs, "calibration_warnings": warns,
             "units": {"current_unit": self.current_unit, "voltage_unit": self.voltage_unit,
-                      "voltage_basis": self.voltage_basis},
+                      "voltage_basis": self.voltage_basis, "x_unit_text": self.x_unit_text,
+                      "y_unit_text": self.y_unit_text, "confirmed": self.units_confirmed, "source": self.units_source},
+            "axis_recognition": {k: v.to_dict() for k, v in self.axis_recognition.items()},
+            "axis_confirmed": dict(self.axis_confirmed),
+            "panel_index": self.panel_index,
+            "saved_curves": [{"name": c["name"], "n_points": len(c["points"]), "saved_utc": c["saved_utc"],
+                              "candidate": c.get("candidate")} for c in self.saved_curves],
             "points": [p.to_dict() for p in self.sorted_points()],
             "deleted_points": self.deleted_points,
             "edit_counts": self.edit_counts(),

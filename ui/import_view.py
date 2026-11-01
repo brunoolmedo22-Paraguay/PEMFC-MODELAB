@@ -361,9 +361,11 @@ def _current_set() -> None:
         st.rerun()
 
 
-def render() -> None:
-    _device_section()
-    st.divider()
+def render(with_device: bool = True) -> None:
+    """``with_device=False`` en el espacio de trabajo v0.3.0: el dispositivo se edita en la etapa 01."""
+    if with_device:
+        _device_section()
+        st.divider()
     st.subheader("Datos de polarización")
     mode = st.radio("Origen de los datos", ["Archivo CSV", "Pegar datos CSV", "Ejemplos documentados",
                                             "Imagen de una curva"], horizontal=True, key="src_mode")

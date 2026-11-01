@@ -1,0 +1,26 @@
+{
+ "crear": "ok",
+ "url": "http://127.0.0.1:8801/?view=device&device=dev-b0f0315d11&draft=drf-bd038225ab&step=1&panel=flujo",
+ "etapa1": "ok",
+ "etapa2": "ok",
+ "etapa3": "ok",
+ "estado_ajuste": [
+  "Estado: AJUSTADO_A_CURVA"
+ ],
+ "etapa4_5": "ok",
+ "perfil_descargado": "pml-bffba1bcc9f39323_profile.json",
+ "indicador": "Guardado en este navegador · 09:34:18",
+ "etapa6": "ok",
+ "tras_recarga_tarjeta": [
+  "Stack de laboratorio OTEKON | Grupo PEM-FC · Ref. Fig. 3 | Perfil ajustado | CELDAS | 41 | ÁREA ACTIVA | 232 cm² | CALIBRACIONES | 1 | BORRADORES | 1 | Perfil activo | ninguno | dev-b0f0315d11 | Modificado hace un momento"
+ ],
+ "recarga": "ok",
+ "etapa_reabierta": [],
+ "historial": [
+  "Calibraciones",
+  "Calibraciones",
+  "Calibración 1 · 01/11/2026 09:34 · perfil pml-bffba1bcc9f39323 — estado AJUSTADO_A_CURVA · validación SIN_VALIDACION_INDEPENDIENTE · ejecutada en ModelLab."
+ ],
+ "reabrir_historial": "ok",
+ "errs": []
+}

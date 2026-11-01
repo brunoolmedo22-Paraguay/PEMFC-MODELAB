@@ -62,12 +62,14 @@ function build(parent) {
   const zoomIn = el("button", "pml-btn", "+"); zoomIn.title = "Acercar (+)";
   const fitBtn = el("button", "pml-btn", "Ajustar"); fitBtn.title = "Ajustar la imagen a la vista (0)";
   const oneBtn = el("button", "pml-btn", "1:1"); oneBtn.title = "Un píxel de imagen = un píxel de pantalla";
+  const ocrBtn = el("button", "pml-btn on", "OCR"); ocrBtn.title = "Mostrar/ocultar las etiquetas de ejes reconocidas (verde: coherente; rojo: atípica; gris: excluida; azul: título)";
   const undoBtn = el("button", "pml-btn", "↶"); undoBtn.title = "Deshacer (Ctrl+Z)";
   const redoBtn = el("button", "pml-btn", "↷"); redoBtn.title = "Rehacer (Ctrl+Y)";
   for (const b of [zoomOut, zoomIn, fitBtn, oneBtn]) bar.appendChild(b);
   bar.appendChild(el("span", "pml-sep"));
   bar.appendChild(undoBtn); bar.appendChild(redoBtn);
-  for (const b of [zoomOut, zoomIn, fitBtn, oneBtn, undoBtn, redoBtn]) b.type = "button";
+  bar.appendChild(el("span", "pml-sep")); bar.appendChild(ocrBtn);
+  for (const b of [zoomOut, zoomIn, fitBtn, oneBtn, undoBtn, redoBtn, ocrBtn]) b.type = "button";
   const wrap = el("div", "pml-wrap");
   const canvas = el("canvas", "pml-canvas");
   wrap.appendChild(canvas);
@@ -84,7 +86,7 @@ function build(parent) {
     instanceId: Math.random().toString(36).slice(2),
     root, canvas, wrap, data: null, send: null, img: new Image(), imgKey: null, imgReady: false,
     view: { scale: 1, ox: 0, oy: 0, fitted: false }, mode: "select", sel: null, drag: null,
-    hover: null, pts: [], anchors: {}, seq: 0, raf: 0, dpr: window.devicePixelRatio || 1,
+    hover: null, pts: [], anchors: {}, seq: 0, raf: 0, dpr: window.devicePixelRatio || 1, showOcr: true,
   };
   root.__ctl = ctl;
 
@@ -111,8 +113,9 @@ function build(parent) {
     return [e.clientX - r.left, e.clientY - r.top];
   }
   function fit() {
-    const d = ctl.data; if (!d) return;
+    const d = ctl.data; if (!d || !d.image) return;
     const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    if (!d.image || cw < 20 || ch < 20 || !d.image.w) { ctl.view.fitted = false; return; }   // aún sin tamaño real: reintentar al redimensionar
     const s = Math.min(cw / d.image.w, ch / d.image.h) * 0.98;
     ctl.view.scale = s;
     ctl.view.ox = -(cw / s - d.image.w) / 2;
@@ -141,7 +144,7 @@ function build(parent) {
     canvas.height = Math.round(h * ctl.dpr);
     canvas.style.width = w + "px";
     canvas.style.height = h + "px";
-    if (!ctl.view.fitted) { fit(); return; }
+    if (!ctl.view.fitted || ctl.view.scale <= 0) { fit(); return; }
     ctl.view.ox = icx - (w / 2) / ctl.view.scale;   // mantener el centro de la vista
     ctl.view.oy = icy - (h / 2) / ctl.view.scale;
     schedule();
@@ -316,6 +319,7 @@ function build(parent) {
     zoomAt(1 / ctl.view.scale, cx, cy);
   });
   undoBtn.addEventListener("click", () => emit({ type: "undo" }));
+  ocrBtn.addEventListener("click", () => { ctl.showOcr = !ctl.showOcr; ocrBtn.classList.toggle("on", ctl.showOcr); schedule(); });
   redoBtn.addEventListener("click", () => emit({ type: "redo" }));
 
   // ---------------- estado
@@ -357,7 +361,7 @@ function build(parent) {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#e9ebef";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    if (!d) return;
+    if (!d || !d.image) return;
     ctx.setTransform(dpr * s, 0, 0, dpr * s, -ctl.view.ox * s * dpr, -ctl.view.oy * s * dpr);
     const u = 1 / s;  // un píxel de pantalla en unidades de imagen
     ctx.imageSmoothingEnabled = s < 3;
@@ -447,6 +451,21 @@ function build(parent) {
       ctx.fillStyle = "rgba(255,255,255,0.88)"; ctx.fillRect(tx - 2 * u, ty - 12 * u, tw + 4 * u, 15 * u);
       ctx.fillStyle = col; ctx.fillText(txt, tx, ty);
     }
+    // etiquetas de ejes reconocidas (OCR + verificación geométrica)
+    if (ctl.showOcr && d.ocr) {
+      ctx.font = `${10.5 * u}px sans-serif`;
+      for (const b of d.ocr) {
+        const [x0, y0, x1, y1] = b.bbox;
+        const col = b.title ? (b.inlier ? "#2f6fed" : "#7a8796") : b.excluded ? "#8a8a8a" : b.inlier ? "#14a05a" : "#d0304f";
+        ctx.strokeStyle = col; ctx.lineWidth = 1.4 * u; ctx.setLineDash(b.excluded ? [3 * u, 2 * u] : []);
+        ctx.strokeRect(x0 - 1.5 * u, y0 - 1.5 * u, x1 - x0 + 3 * u, y1 - y0 + 3 * u); ctx.setLineDash([]);
+        const tag = b.title ? (b.unit ? `unidad: ${b.unit}` : "título") : (b.value === null || b.value === undefined ? "?" : `${b.value}${b.user ? " ✎" : ""}`);
+        const tw = ctx.measureText(tag).width;
+        const ty = b.axis === "X" && !b.title ? y1 + 12 * u : y0 - 4 * u;
+        ctx.fillStyle = "rgba(255,255,255,0.86)"; ctx.fillRect(x0 - 1 * u, ty - 10 * u, tw + 4 * u, 12.5 * u);
+        ctx.fillStyle = col; ctx.fillText(tag, x0 + 1 * u, ty);
+      }
+    }
     // recuadro en curso
     const g = ctl.drag;
     if (g && g.kind === "box") {
@@ -462,7 +481,12 @@ function build(parent) {
 }
 
 export default function (component) {
-  const { data, setTriggerValue, parentElement } = component;
+  const { setTriggerValue, parentElement } = component;
+  let data = component.data;
+  if (typeof data === "string") {           // defensa: datos serializados como texto JSON
+    try { data = JSON.parse(data); } catch (e) { return; }
+  }
+  if (!data || !data.image) return;
   let root = parentElement.querySelector(".pml-dz");
   if (!root) root = build(parentElement);
   const ctl = root.__ctl;

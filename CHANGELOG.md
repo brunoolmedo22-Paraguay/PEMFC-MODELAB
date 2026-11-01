@@ -1,5 +1,83 @@
 # Changelog
 
+## v0.3.0 — Gestión de dispositivos y digitalización inteligente (2026-11)
+
+El Motor 1 pasa de ser una aplicación por pestañas a un entorno de **gestión de dispositivos PEMFC**:
+catálogo, flujo guiado por etapas, borradores persistentes, historial de calibraciones y perfiles. El
+digitalizador **reconoce automáticamente los valores de los ejes** (OCR local verificado geométricamente) y
+funciona además como **herramienta autónoma** de exportación X–Y. Núcleo numérico intacto: `model.py` con el
+mismo SHA-256, `identification/` sin cambios y OTEKON con Δ RMSE = 0,0. No se implementa el Motor 2.
+
+### Nuevo
+- **Catálogo de dispositivos**:
+  - tarjetas en cuadrícula adaptable, con la tarjeta «+ Agregar dispositivo» dentro de la cuadrícula;
+  - búsqueda, filtros y orden sin recargar;
+  - pantalla propia cuando no hay dispositivos;
+  - estado administrativo separado de la calidad científica.
+- **Creación breve** (solo el nombre es obligatorio) y **edición progresiva** de los metadatos técnicos en la etapa 01. El identificador es estable aunque se renombre el dispositivo.
+- **Flujo guiado 01–06**:
+  - indicador de etapas con cinco estados y salto directo a cualquier etapa accesible;
+  - navegación «← Anterior · Guardar borrador · Continuar →» con validaciones;
+  - los resultados que dejan de corresponder a los datos se marcan «desactualizados», nunca se borran.
+- **Persistencia real** en el navegador (IndexedDB):
+  - autoguardado, indicador visible y recuperación tras recargar;
+  - detección de conflictos entre pestañas sin sobrescribir.
+- **Proyecto portátil** `.pmlproj.zip` con huellas SHA-256 por registro. Al importar nunca sobrescribe: lo idéntico se omite, lo distinto entra como copia y lo alterado se rechaza.
+- **Modelo de objetos** en `workspace/`:
+  - dispositivo, conjunto de datos (inmutable), borrador, calibración (inmutable, con el perfil completo) y exportación;
+  - perfil activo como selección administrativa.
+- **Historial**:
+  - calibraciones en solo lectura con su gráfico observado frente al modelo;
+  - perfil activo y comparación de calibraciones (RMSE, parámetros, condiciones, dominio);
+  - «Nueva identificación a partir de esta», conjuntos de datos y exportaciones registradas.
+- **Migración** de perfiles v0.1/v0.2 a un dispositivo nuevo, con el perfil intacto.
+- **Reconocimiento automático de ejes** (`digitizer/ocr.py` y `digitizer/axis_ocr.py`):
+  - modelo PP-OCRv4 en ONNX, incluido y verificado por SHA-256;
+  - interpretación de coma y punto decimal, negativos, notación científica, 10ⁿ y miles;
+  - consenso geométrico con detección de atípicas y elección de escala lineal o log10;
+  - detección de multiplicadores de eje;
+  - unidades leídas de los títulos;
+  - estados Confiable, Revisión e Insuficiente con razones observables;
+  - corrección o exclusión de cada etiqueta, y números marcados sobre la imagen.
+- **Varios paneles** con calibración, curvas y correcciones propias en cada uno.
+- **Curvas guardadas** por panel.
+- **Digitalizador autónomo** (página «Digitalizador»): exportación CSV, XLSX, JSON, PNG y ZIP científico con valores **idénticos** en todos los formatos, por curva, por panel o por imagen.
+- **Identidad visual propia**:
+  - tema claro y oscuro, tipografía del sistema, componentes HTML/CSS/JS locales sin CDN;
+  - diseño adaptable a escritorio, tablet y móvil.
+
+### Cambios en archivos existentes
+- `app.py`: enrutado nuevo (catálogo, dispositivo, digitalizador y alcance) y puente de persistencia al final de cada ejecución.
+- `ui/import_view.py`: `render(with_device=False)` para el flujo por etapas.
+- `ui/export_view.py`: gancho opcional para registrar descargas (no cambia el contenido exportado).
+- `ui/digitizer_view.py`:
+  - reconocimiento de ejes, paneles, curvas guardadas y exportación;
+  - modos «motor1» y «standalone»;
+  - contextos aislados por identificación.
+- `ui/static/digitizer_canvas.js`:
+  - superposición de las etiquetas OCR;
+  - recuperación del foco;
+  - ajuste de la vista a prueba de tamaño 0;
+  - datos en JSON nativo.
+- `digitizer/draft.py`:
+  - reconocimiento y confirmaciones de ejes y unidades;
+  - corrección de etiquetas y curvas guardadas;
+  - `physical_ready()`.
+- `digitizer/confirm.py`: confirmar exige ejes y unidades confirmados, y el reconocimiento queda en `mapping`.
+- `pemfc_core/schemas.py`: `APP_VERSION = "0.3.0"` (única línea).
+- `requirements.txt`: `onnxruntime==1.24.4` y `openpyxl==3.1.5`.
+- `.streamlit/config.toml`: tema con paletas clara y oscura.
+
+### Fallos encontrados y corregidos durante la verificación
+1. Al reabrir un borrador en una sesión nueva, la vista de configuración aplicaba el preset genérico y sobrescribía la configuración guardada.
+2. Al cargar un ejemplo, el perfil heredaba la identidad del dispositivo del ejemplo. Ahora usa siempre el dispositivo registrado, y la geometría del ejemplo solo se adopta de forma explícita.
+3. Dos ejecuciones con los mismos datos contaban como una sola calibración. Ahora cada ejecución queda registrada.
+4. Un multiplicador «1e3» fusionado con el título dejaba un eje «confiable» con valores 1000 veces menores. Ahora cualquier exponente o multiplicador obliga a revisar.
+5. `openpyxl` truncaba los floats a 16 cifras y el XLSX difería del CSV y el JSON. Ahora la escritura es exacta.
+6. Los tipos `numpy` en los datos del lienzo hacían que llegara como texto y la imagen no se dibujaba.
+7. El lienzo podía ajustarse con tamaño 0 y quedar en blanco.
+8. Borrar una curva guardada no se podía deshacer.
+
 ## v0.2.0 — Digitalización asistida e interactiva de curvas de polarización (2026-10-26)
 
 La opción «Imagen de una curva» de **1. Importar curva** deja de ser un aviso y pasa a ser un digitalizador visual

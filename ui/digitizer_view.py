@@ -105,10 +105,12 @@ def _sync_widgets(d: DigitizationDraft) -> None:
         ss[f"dz_val_{n}"] = "" if a.value is None else f"{a.value:g}"
     ss["dz_scale_X"], ss["dz_scale_Y"] = d.scales["X"], d.scales["Y"]
     ss["dz_cu"], ss["dz_vu"], ss["dz_vb"] = d.current_unit, d.voltage_unit, d.voltage_basis
+    ss["dz_xu_text"], ss["dz_yu_text"] = d.x_unit_text, d.y_unit_text
     labels = _cand_labels(d)
     ss["dz_cand"] = next((lab for cid, lab in labels if cid == d.selected_candidate), NONE_CAND)
     if d.detection is not None:
         ss["dz_panel"] = (d.detection.panel_index or 0) + 1 if d.detection.panels else 1
+        ss["dz_panel_saved"] = sorted(k + 1 for k in (ss.get("dz_panels") or {}))
     p = d.params
     ss["dz_npts"], ss["dz_tol"], ss["dz_alpha"] = int(p.n_points), float(p.color_tolerance), float(p.alpha_min)
     ss["dz_trim"], ss["dz_legend"] = bool(p.trim_caps), bool(p.exclude_legends)
@@ -139,6 +141,8 @@ def _new_draft(data: bytes, name: str) -> bool:
         return False
     d = DigitizationDraft.from_image(img)
     _ss()["dz_draft"] = d
+    _ss()["dz_panels"] = {int(d.panel_index or 0): d}       # cada panel conserva su propio borrador
+    _ss()["dz_export"] = None
     _ss()["dz_load_error"] = None
     _ss()["dz_pending"] = None
     _sync_widgets(d)
@@ -147,7 +151,10 @@ def _new_draft(data: bytes, name: str) -> bool:
 
 
 def _draft_has_work(d: DigitizationDraft) -> bool:
-    return d.manually_edited or any(a.edited for a in d.anchors.values())
+    panels = list((_ss().get("dz_panels") or {}).values()) or [d]
+    return any(p.manually_edited or any(a.edited for a in p.anchors.values()) or p.saved_curves
+               or any(l.user_value is not None or l.excluded_by_user
+                      for r in p.axis_recognition.values() for l in r.labels) for p in panels)
 
 
 # ---------------------------------------------------------------------------
@@ -216,13 +223,103 @@ def _on_candidate() -> None:
 
 
 def _on_panel() -> None:
+    """Cambia de panel SIN perder el trabajo del anterior (cada panel tiene su borrador y calibración)."""
+    ss = _ss()
     d = _draft()
     if d is None:
         return
-    p = _params_from_widgets(d, keep_roi=False)
-    p.roi = None
-    d.run_detection(p)
+    idx = int(ss.get("dz_panel", 1)) - 1
+    panels = ss.setdefault("dz_panels", {int(d.panel_index or 0): d})
+    panels[int(d.panel_index or 0)] = d
+    if idx not in panels:
+        params = _params_from_widgets(d, keep_roi=False)
+        params.roi, params.panel_index = None, idx
+        panels[idx] = DigitizationDraft.from_image(d.image, params)
+    ss["dz_draft"] = panels[idx]
+    ss["dz_export"] = None
+    _sync_widgets(panels[idx])
+
+
+def _on_axis_confirm(axis: str) -> None:
+    d = _draft()
+    if d is not None:
+        d.confirm_axis(axis)
+        _sync_widgets(d)
+
+
+def _on_units_confirm() -> None:
+    d = _draft()
+    if d is not None:
+        d.confirm_units()
+
+
+def _on_free_units() -> None:
+    d = _draft()
+    if d is not None:
+        d.set_free_units(_ss().get("dz_xu_text", ""), _ss().get("dz_yu_text", ""))
+
+
+def _on_labels(axis: str, key: str, idx_map: list[int]) -> None:
+    d = _draft()
+    delta = _ss().get(key) or {}
+    if d is None:
+        return
+    for row, cols in (delta.get("edited_rows") or {}).items():
+        i = idx_map[int(row)]
+        if "excluir" in cols:
+            d.correct_label(axis, i, exclude=bool(cols["excluir"]))
+        if "valor" in cols:
+            v = cols["valor"]
+            d.correct_label(axis, i, value=None if v in (None, "") else float(v))
     _sync_widgets(d)
+
+
+def _on_save_curve() -> None:
+    d = _draft()
+    name = str(_ss().get("dz_curve_name", "")).strip()
+    if d is None:
+        return
+    try:
+        d.save_curve(name or f"curva_{len(d.saved_curves) + 1}")
+        _ss()["dz_curve_name"] = ""
+        _ss()["dz_export"] = None
+    except ValueError as exc:
+        d.last_error = str(exc)
+
+
+def _on_curve_action(action: str) -> None:
+    d = _draft()
+    name = _ss().get("dz_saved_pick")
+    if d is None or not name:
+        return
+    (d.load_saved_curve if action == "load" else d.delete_saved_curve)(name)
+    _ss()["dz_export"] = None
+    _sync_widgets(d)
+
+
+# ---------------------------------------------------------------------------
+# contextos aislados: cada identificación del Motor 1 y el modo autónomo tienen su propio digitalizador
+# ---------------------------------------------------------------------------
+_CTX_KEYS = ("dz_draft", "dz_panels", "dz_pending", "dz_load_error", "dz_last_upload_sha", "dz_flash", "dz_open",
+             "dz_export")
+
+
+def use_context(name: str) -> None:
+    ss = _ss()
+    cur = ss.get("dzctx_name", "motor1")
+    if cur == name:
+        return
+    stash = ss.setdefault("dzctx_stash", {})
+    stash[cur] = {k: ss[k] for k in _CTX_KEYS if k in ss}
+    for k in _CTX_KEYS:
+        ss.pop(k, None)
+    for k, v in stash.pop(name, {}).items():
+        ss[k] = v
+    ss["dz_upload_nonce"] = ss.get("dz_upload_nonce", 0) + 1
+    ss["dzctx_name"] = name
+    d = _draft()
+    if d is not None:
+        _sync_widgets(d)
 
 
 def _on_anchor(name: str, what: str) -> None:
@@ -289,7 +386,7 @@ def _cancel() -> None:
         del ss[k]
     ss["dz_upload_nonce"] = ss.get("dz_upload_nonce", 0) + 1
     ss["dz_open"] = False
-    ss["dz_flash"] = ("info", "Digitalización cancelada: el conjunto de curvas y los resultados no se modificaron.")
+    ss["dz_flash"] = ("info", "Digitalización descartada: el conjunto de curvas y los resultados no se modificaron.")
 
 
 # ---------------------------------------------------------------------------
@@ -351,6 +448,12 @@ def _upload_section(d: DigitizationDraft | None) -> None:
 
 
 def _canvas_data(d: DigitizationDraft) -> dict:
+    """Datos del lienzo en tipos JSON nativos (los tipos numpy harían que llegaran como texto al navegador)."""
+    from digitizer.draft import _jsonable
+    return _jsonable(_canvas_data_raw(d))
+
+
+def _canvas_data_raw(d: DigitizationDraft) -> dict:
     url, scale = d.image.display
     cal = d.calibration()[0]
     calib = None
@@ -377,22 +480,113 @@ def _canvas_data(d: DigitizationDraft) -> dict:
         "anchors": {n: {"px": d.anchors[n].px, "py": d.anchors[n].py,
                         "label": "?" if d.anchors[n].value is None else f"{d.anchors[n].value:g}"} for n in ANCHOR_NAMES},
         "roi": list(d.roi) if d.roi else None, "plot_box": list(d.plot_box) if d.plot_box else None,
-        "candidates": cands, "ticks": ticks, "calib": calib,
+        "candidates": cands, "ticks": ticks, "calib": calib, "ocr": d.ocr_boxes(),
     }
+
+
+AXIS_BADGE = {"CONFIABLE": ("success", "Reconocimiento confiable"), "REVISION": ("warning", "Pendiente de revisión"),
+              "INSUFICIENTE": ("error", "Reconocimiento insuficiente")}
+
+
+def _recognition_panel(d: DigitizationDraft) -> None:
+    """Estado del reconocimiento de cada eje con sus evidencias y corrección individual de etiquetas."""
+    st.markdown("**Reconocimiento automático de ejes** (OCR local + verificación geométrica)")
+    if not d.axis_recognition:
+        st.caption("Sin reconocimiento automático para este panel (no se detectaron ejes o el OCR no está "
+                   "disponible). Use las referencias manuales.")
+        return
+    for axis in ("X", "Y"):
+        rec = d.axis_recognition.get(axis)
+        if rec is None:
+            continue
+        kind, label = AXIS_BADGE.get(rec.status, ("info", rec.status))
+        conf = d.axis_confirmed.get(axis)
+        head = (f"**Eje {axis}** · {label}" + (f" · escala {rec.scale}" if rec.scale else "")
+                + (f" · {rec.n_inliers} etiquetas coherentes · RMS {rec.rms_px:.2f} px" if rec.rms_px is not None else "")
+                + (" · ✔ confirmado" if conf else " · **sin confirmar**"))
+        getattr(st, kind if not conf or kind != "warning" else "info")(head + ("\n\n" + "\n".join(
+            f"- {r}" for r in rec.reasons[:4]) if rec.reasons else ""))
+        if not conf and rec.status != "INSUFICIENTE":
+            st.button(f"Confirmar eje {axis} tras revisarlo", key=f"dz_conf_{axis}", on_click=_on_axis_confirm,
+                      args=(axis,), help="Declara que ha revisado los números reconocidos y su posición en la imagen.")
+        if rec.labels:
+            with st.expander(f"Etiquetas reconocidas en {axis} ({len(rec.labels)})", expanded=rec.status != "CONFIABLE"):
+                rows, idx = [], []
+                for i, l in enumerate(rec.labels):
+                    rows.append({"texto OCR": l.text, "valor": l.effective_value, "coherente": bool(l.inlier),
+                                 "residuo [px]": None if l.residual_px is None else round(l.residual_px, 2),
+                                 "conf. OCR": round(l.ocr_conf, 2), "excluir": bool(l.excluded_by_user)})
+                    idx.append(i)
+                key = f"dz_lbl_{axis}_{d.rev}"
+                st.data_editor(pd.DataFrame(rows), key=key, hide_index=True, width="stretch",
+                               disabled=["texto OCR", "coherente", "residuo [px]", "conf. OCR"],
+                               column_config={"valor": st.column_config.NumberColumn("valor", format="%.6g",
+                                              help="Corrija el número si el OCR se equivocó.")},
+                               on_change=_on_labels, args=(axis, key, idx))
+                if rec.multiplier:
+                    st.caption(f"Multiplicador detectado: «{rec.multiplier_text}» (×{rec.multiplier:g}); los valores de "
+                               "las referencias ya lo incluyen.")
+                if rec.title:
+                    st.caption(f"Título del eje leído: «{rec.title.get('text')}»"
+                               + (f" → unidad {rec.title['unit']}" if rec.title.get("unit") else " (sin unidad reconocible)"))
+
+
+def _units_panel(d: DigitizationDraft) -> None:
+    standalone = _ss().get("dz_mode") == "standalone"
+    if standalone:
+        c1, c2 = st.columns(2)
+        c1.text_input("Unidad X", key="dz_xu_text", on_change=_on_free_units, placeholder="p. ej. A/cm²",
+                      help="Texto libre. La escala la fijan las referencias; la unidad solo etiqueta los datos.")
+        c2.text_input("Unidad Y", key="dz_yu_text", on_change=_on_free_units, placeholder="p. ej. V")
+    else:
+        c1, c2, c3 = st.columns(3)
+        c1.selectbox("Unidad X", CURRENT_CHOICES, key="dz_cu", on_change=_on_units)
+        c2.selectbox("Unidad V", list(units.VOLTAGE_UNITS), key="dz_vu", on_change=_on_units)
+        c3.selectbox("Tensión", list(units.VOLTAGE_BASES), key="dz_vb", on_change=_on_units,
+                     format_func=lambda b: "por celda" if b == "celda" else "de stack")
+    if d.units_confirmed:
+        st.caption(f"Unidades confirmadas ({d.units_source}).")
+    else:
+        st.warning("Unidades sin confirmar: no se detectaron con evidencia en los títulos de los ejes. Elíjalas o "
+                   "confirme las mostradas; nunca se suponen.")
+        st.button("Confirmar unidades", key="dz_units_ok", on_click=_on_units_confirm,
+                  disabled=standalone and not (_ss().get("dz_xu_text") and _ss().get("dz_yu_text")))
+
+
+def _saved_curves_panel(d: DigitizationDraft) -> None:
+    st.markdown("**Curvas de este panel**")
+    c1, c2 = st.columns([2, 1])
+    c1.text_input("Nombre", key="dz_curve_name", placeholder=f"curva_{len(d.saved_curves) + 1}",
+                  label_visibility="collapsed")
+    c2.button("Guardar curva", key="dz_save_curve", on_click=_on_save_curve, disabled=not d.points, width="stretch",
+              help="Guarda la traza actual con nombre para exportarla junto con otras curvas.")
+    if d.saved_curves:
+        names = [c["name"] for c in d.saved_curves]
+        if _ss().get("dz_saved_pick") not in names:
+            _ss()["dz_saved_pick"] = names[-1]
+        st.selectbox("Guardadas", names, key="dz_saved_pick",
+                     format_func=lambda n: next(f"{c['name']} · {len(c['points'])} pts · {c.get('candidate') or 'manual'}"
+                                                for c in d.saved_curves if c["name"] == n))
+        c1, c2 = st.columns(2)
+        c1.button("Cargar en el lienzo", key="dz_load_curve", on_click=_on_curve_action, args=("load",), width="stretch")
+        c2.button("Borrar", key="dz_del_curve", on_click=_on_curve_action, args=("delete",), width="stretch")
 
 
 def _side_panel(d: DigitizationDraft) -> None:
     ss = _ss()
     det = d.detection
+    if det and len(det.panels) > 1:
+        st.selectbox("Panel", list(range(1, len(det.panels) + 1)), key="dz_panel", on_change=_on_panel,
+                     help="La imagen contiene varios gráficos con ejes. Cada panel conserva su propia calibración, "
+                          "curvas y correcciones al cambiar entre ellos.",
+                     format_func=lambda k: f"Panel {k}" + (" · trabajado" if k in (ss.get("dz_panel_saved") or []) else ""))
     st.markdown("**Curva candidata**")
     labels = [lab for _, lab in _cand_labels(d)]
     if ss.get("dz_cand") not in labels:
         ss["dz_cand"] = NONE_CAND
     st.selectbox("Trazo", labels, key="dz_cand", on_change=_on_candidate, label_visibility="collapsed",
                  help="Cada candidato es un trazo de un color. No se mezclan puntos de candidatos distintos.")
-    if det and len(det.panels) > 1:
-        st.selectbox("Panel", list(range(1, len(det.panels) + 1)), key="dz_panel", on_change=_on_panel,
-                     help="La imagen contiene varios gráficos con ejes; elija el que desea digitalizar.")
+    _saved_curves_panel(d)
     with st.expander("Parámetros de detección"):
         st.slider("Puntos a muestrear", 5, 200, key="dz_npts")
         st.slider("Tolerancia de color (RGB)", 10.0, 120.0, key="dz_tol")
@@ -400,35 +594,36 @@ def _side_panel(d: DigitizationDraft) -> None:
         st.checkbox("Recortar terminaciones de línea (½ grosor)", key="dz_trim")
         st.checkbox("Excluir recuadros de leyenda", key="dz_legend")
         st.caption("Se aplican al pulsar «Identificar automáticamente».")
-
-    st.markdown("**Calibración de ejes** — posición en la imagen y valor físico rotulado")
-    for n in ANCHOR_NAMES:
-        a = d.anchors[n]
-        c1, c2 = st.columns([1, 1])
-        coord = "px" if n[0] == "X" else "py"
-        src = {"auto-tick": "propuesta automática: tick detectado", "auto-grid": "propuesta automática: gridline",
-               "auto-marco": "propuesta automática: borde del marco (sin tick); confírmela",
-               "usuario": "fijada por el usuario"}.get(a.source, a.source)
-        c1.text_input(f"{n}: {coord}", key=f"dz_pos_{n}", on_change=_on_anchor, args=(n, "pos"),
-                      help=f"Coordenada de imagen ({coord}, y hacia abajo). Origen: {src}. También puede fijarla con "
-                           f"el botón {n} del lienzo (se ajusta a ticks; Alt evita el ajuste) o arrastrando el ancla.")
-        c2.text_input(f"{n}: valor", key=f"dz_val_{n}", on_change=_on_anchor, args=(n, "val"),
-                      placeholder="escriba el valor", help="Valor rotulado en el eje en esa posición. No se lee "
-                                                           "automáticamente (sin OCR). Admite coma decimal.")
-    c1, c2 = st.columns(2)
-    c1.selectbox("Escala X", AXIS_SCALES, key="dz_scale_X", on_change=_on_scale, args=("X",))
-    c2.selectbox("Escala Y", AXIS_SCALES, key="dz_scale_Y", on_change=_on_scale, args=("Y",))
-    c1, c2, c3 = st.columns(3)
-    c1.selectbox("Unidad X", CURRENT_CHOICES, key="dz_cu", on_change=_on_units)
-    c2.selectbox("Unidad V", list(units.VOLTAGE_UNITS), key="dz_vu", on_change=_on_units)
-    c3.selectbox("Tensión", list(units.VOLTAGE_BASES), key="dz_vb", on_change=_on_units,
-                 format_func=lambda b: "por celda" if b == "celda" else "de stack")
+    _recognition_panel(d)
+    with st.expander("Referencias de calibración (manual)", expanded=not all(d.axis_confirmed.values())):
+        st.caption("Las referencias reconocidas automáticamente se pueden corregir aquí o en el lienzo. Escribir un "
+                   "valor lo declara usted y confirma ese eje.")
+        for n in ANCHOR_NAMES:
+            a = d.anchors[n]
+            c1, c2 = st.columns([1, 1])
+            coord = "px" if n[0] == "X" else "py"
+            src = {"auto-tick": "propuesta automática: tick detectado", "auto-grid": "propuesta automática: gridline",
+                   "auto-marco": "propuesta automática: borde del marco (sin tick); confírmela",
+                   "auto-ocr": "reconocida automáticamente (OCR + geometría)",
+                   "usuario": "fijada por el usuario"}.get(a.source, a.source)
+            c1.text_input(f"{n}: {coord}", key=f"dz_pos_{n}", on_change=_on_anchor, args=(n, "pos"),
+                          help=f"Coordenada de imagen ({coord}, y hacia abajo). Origen: {src}.")
+            c2.text_input(f"{n}: valor", key=f"dz_val_{n}", on_change=_on_anchor, args=(n, "val"),
+                          placeholder="valor", help=f"Valor rotulado en esa posición. Origen: {src}. Admite coma decimal.")
+        c1, c2 = st.columns(2)
+        c1.selectbox("Escala X", AXIS_SCALES, key="dz_scale_X", on_change=_on_scale, args=("X",))
+        c2.selectbox("Escala Y", AXIS_SCALES, key="dz_scale_Y", on_change=_on_scale, args=("Y",))
+    _units_panel(d)
     cal, errs, warns = d.calibration()
+    ready, why = d.physical_ready()
     if cal is None:
         st.warning("**Coordenadas en píxeles / calibración pendiente.**\n\n" + "\n".join(f"- {e}" for e in errs))
+    elif not ready:
+        st.info("Calibración propuesta, **pendiente de confirmación** antes de usar los valores físicos:\n\n"
+                + "\n".join(f"- {w}" for w in why))
     else:
-        st.success(f"Calibrado: X {cal.x.scale}, Y {cal.y.scale}. Los valores físicos se recalculan desde los "
-                   "píxeles en cada cambio.")
+        st.success(f"Calibrado y confirmado: X {cal.x.scale}, Y {cal.y.scale}. Los valores físicos se recalculan "
+                   "desde los píxeles en cada cambio.")
 
 
 def _fmt_range(lo, hi, per_px=None) -> str:
@@ -601,6 +796,57 @@ def _audit_tab(d: DigitizationDraft) -> None:
                        key="dz_dl_json")
 
 
+SCOPES = {"curva_actual": "Curva actual (traza visible)", "curva_guardada": "Una curva guardada",
+          "panel": "Todas las curvas guardadas del panel", "imagen": "Todas las curvas guardadas de la imagen"}
+
+
+def _export_tab(d: DigitizationDraft) -> None:
+    """Exportación X–Y autónoma: no requiere dispositivo, calibración electroquímica ni perfil."""
+    from digitizer.export import CURRENT, FORMATS, ExportError, collect, entries_for
+    ss = _ss()
+    st.caption("Convierte la figura en una tabla numérica sin pasar por el Motor 1. Los cinco formatos contienen "
+               "exactamente los mismos valores; las unidades y referencias son las confirmadas en cada panel.")
+    c1, c2 = st.columns([2, 1.4])
+    scope = c1.radio("Alcance", list(SCOPES), format_func=SCOPES.get, key="dz_exp_scope", horizontal=True)
+    name = None
+    if scope == "curva_guardada":
+        names = [c["name"] for c in d.saved_curves]
+        if not names:
+            st.info("Todavía no hay curvas guardadas en este panel: use «Guardar curva».")
+            return
+        name = c2.selectbox("Curva", names, key="dz_exp_curve")
+    pixels_only = st.checkbox("Exportar solo coordenadas en píxeles (SIN CALIBRAR)", key="dz_exp_px",
+                              help="Para figuras cuyos ejes no pueden calibrarse. No incluye valores ni unidades físicas.")
+    panels = list((ss.get("dz_panels") or {int(d.panel_index or 0): d}).values())
+    try:
+        entries = entries_for(panels, {"curva_actual": "curva", "curva_guardada": "curva"}.get(scope, scope), d,
+                              CURRENT if scope == "curva_actual" else name)
+        bundle = collect(entries, pixels_only=pixels_only)
+    except ExportError as exc:
+        st.warning(str(exc))
+        return
+    df = pd.DataFrame(bundle.rows)
+    show = df.rename(columns={"curve_id": "curva", "point": "punto", "origin": "origen", "x_unit": "unidad X",
+                              "y_unit": "unidad Y"})
+    st.dataframe(show, hide_index=True, width="stretch", height=min(360, 38 + 35 * len(show)))
+    with st.expander("Copiar valores (texto tabulado)"):
+        st.code(show.to_csv(sep="\t", index=False), language=None)
+    sig = (scope, name, pixels_only, tuple(p.rev for p in panels))
+    if ss.get("dz_export") and ss["dz_export"].get("sig") != sig:
+        ss["dz_export"] = None
+    if st.button("Preparar archivos de exportación", key="dz_exp_prep", type="primary"):
+        with st.spinner("Generando CSV, XLSX, JSON, PNG y ZIP…"):
+            ss["dz_export"] = {"sig": sig, "files": {k: f(bundle) for k, (_, _, f) in FORMATS.items()}}
+    if ss.get("dz_export"):
+        stem = Path(d.image.filename).stem
+        cols = st.columns(len(FORMATS))
+        for col, (k, (fname, mime, _)) in zip(cols, FORMATS.items()):
+            col.download_button(k, ss["dz_export"]["files"][k], file_name=f"{stem}__{fname}", mime=mime,
+                                key=f"dz_dl_{k}", width="stretch")
+        st.caption(f"{len(bundle.rows)} puntos · {len({r['curve_id'] for r in bundle.rows})} curva(s) · "
+                   + ("SIN CALIBRAR (solo píxeles)" if pixels_only else "valores físicos confirmados"))
+
+
 def _confirm(d: DigitizationDraft, form) -> None:
     ss = _ss()
     if form is None:
@@ -634,25 +880,28 @@ def _confirm(d: DigitizationDraft, form) -> None:
 # ---------------------------------------------------------------------------
 @st.dialog("Digitalizar curva desde imagen", width="large", on_dismiss=_on_dismiss)
 def _dialog() -> None:
-    _dialog_body()
+    render_body("motor1")
 
 
-def _dialog_body() -> None:
+def render_body(mode: str = "motor1") -> None:
+    """Cuerpo del digitalizador. ``motor1``: confirmar curva hacia el Motor 1. ``standalone``: exportar X–Y."""
+    _ss()["dz_mode"] = mode
     if "dz_next_id" in _ss():
         _ss()["dz_id"] = _ss().pop("dz_next_id")
     d = _draft()
     if d is None:
-        st.markdown("Suba la imagen de una curva de polarización. La detección automática (ejes, ticks y trazo) se "
-                    "ejecuta al cargarla, **localmente**. Los valores de los ejes no se leen de la imagen: usted "
-                    "escribe los cuatro valores de referencia. Nada se añade al conjunto hasta que pulse "
-                    "«Confirmar y añadir curva».")
+        st.markdown("Suba la imagen de un gráfico. Al cargarla se detectan **localmente** los paneles, los ejes, "
+                    "los números de las escalas (OCR verificado geométricamente), las unidades y los trazos. Lo "
+                    "que no se reconozca con fiabilidad queda pendiente de su confirmación"
+                    + (". Nada se añade al conjunto hasta que pulse «Confirmar y añadir curva»." if mode == "motor1"
+                       else "; después puede exportar los datos X–Y sin crear ningún dispositivo."))
         _upload_section(None)
         if _draft() is not None:
             # La subida se procesó en esta ejecución: se reejecuta para que el diálogo tenga desde el primer
             # momento la MISMA estructura que tendrá después. Si cambiara, el lienzo se remontaría tras la
             # primera edición y se perderían zoom, desplazamiento y foco (detectado en navegador real).
             st.rerun()
-        if st.button("Cancelar", key="dz_cancel_empty"):
+        if mode == "motor1" and st.button("Cancelar", key="dz_cancel_empty"):
             _cancel()
             st.rerun()
         return
@@ -664,6 +913,12 @@ def _dialog_body() -> None:
     form_ok = all(_ss().get(k) is not None for k in ("dz_T", "dz_P")) and str(_ss().get("dz_id", "")).strip()
     status = d.status(metadata_ok=bool(form_ok))
     kind, text = STATUS_TEXT.get(status, ("info", status))
+    if mode == "standalone":
+        ready, _ = d.physical_ready()
+        status, kind, text = (("LISTO_PARA_EXPORTAR", "success", "Calibración confirmada: revise el trazo, guarde las "
+                               "curvas y expórtelas en «Exportar datos».") if ready else
+                              ("REVISION", "warning", "Revise y confirme los ejes y las unidades antes de exportar "
+                               "valores físicos (o exporte solo píxeles)."))
     getattr(st, kind)(f"**{status}** · {text}")
     st.caption(f"**{d.image.filename}** · {d.image.width}×{d.image.height} px · {d.image.format} · SHA-256 "
                f"`{d.image.sha256[:16]}…` · método: {d.extraction_method}"
@@ -706,7 +961,23 @@ def _dialog_body() -> None:
         with st.expander(f"Avisos de digitalización ({len(warns)})", expanded=len(warns) <= 3):
             st.warning("\n".join(f"- {w}" for w in warns))
 
-    t1, t2, t3, t4 = st.tabs(["Tabla de puntos", "Vista previa física", "Condiciones y metadatos", "Auditoría"])
+    if mode == "standalone":
+        t1, t2, t3, t4 = st.tabs(["Exportar datos", "Tabla de puntos", "Vista previa física", "Auditoría"])
+        with t1:
+            _export_tab(d)
+        with t2:
+            _table_tab(d)
+        with t3:
+            _preview_tab(d)
+        with t4:
+            _audit_tab(d)
+        st.divider()
+        if st.button("Descartar esta digitalización", key="dz_cancel"):
+            _cancel()
+            st.rerun()
+        return
+    t1, t2, t3, t4, t5 = st.tabs(["Tabla de puntos", "Vista previa física", "Condiciones y metadatos",
+                                  "Exportar datos", "Auditoría"])
     with t1:
         _table_tab(d)
     with t2:
@@ -714,11 +985,14 @@ def _dialog_body() -> None:
     with t3:
         form = _metadata_tab(d)
     with t4:
+        _export_tab(d)
+    with t5:
         _audit_tab(d)
 
     st.divider()
     c1, c2, c3 = st.columns([1.4, 1.2, 1])
-    can = d.is_calibrated and form is not None and any(p.include for p in d.points)
+    ready, _why = d.physical_ready()
+    can = d.is_calibrated and ready and form is not None and any(p.include for p in d.points)
     if c1.button("Confirmar y añadir curva", type="primary", key="dz_confirm", disabled=not can, width="stretch"):
         _confirm(d, form)
     c2.download_button("Descargar CSV de la digitalización", d.to_csv().encode("utf-8"),
@@ -732,6 +1006,8 @@ def _dialog_body() -> None:
         missing = []
         if not d.is_calibrated:
             missing.append("calibración (cuatro referencias con valor)")
+        elif not ready:
+            missing.append("confirmar ejes/unidades")
         if form is None:
             missing.append("condiciones de medición")
         if not any(p.include for p in d.points):
@@ -746,9 +1022,9 @@ def render_entry() -> None:
     if flash:
         getattr(st, flash[0])(flash[1])
     st.markdown("Digitalice una curva de polarización desde una imagen (PNG, JPEG o WebP) en un editor visual: "
-                "detección automática local del trazo y de los ejes, calibración con **cuatro referencias** cuyos "
-                "valores usted confirma, edición de puntos con zoom, tabla sincronizada y vista previa. La curva "
-                "confirmada entra en el mismo flujo que un CSV, con calidad **«digitalizado»**.")
+                "detección local del trazo, de los ejes y de los **números de las escalas** (OCR verificado "
+                "geométricamente), corrección de etiquetas y puntos con zoom, tabla sincronizada y vista previa. La "
+                "curva confirmada entra en el mismo flujo que un CSV, con calidad **«digitalizado»**.")
     d = _draft()
     if d is not None:
         st.caption(f"Borrador en curso: **{d.image.filename}** ({len(d.points)} puntos"

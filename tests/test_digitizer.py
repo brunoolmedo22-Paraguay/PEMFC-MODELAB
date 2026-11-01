@@ -236,7 +236,7 @@ def test_multipanel_real_figure_otekon():
 
 # ---------------------------------------------------------------------------- borrador
 def test_draft_states_edits_undo_redo_and_audit():
-    d = DigitizationDraft.from_image(_img("01_curva_simple"))
+    d = DigitizationDraft.from_image(_img("01_curva_simple"), ocr=False)      # modo manual (v0.2.0)
     assert d.status() == ST_NEEDS_CAL and all(a.value is None for a in d.anchors.values())
     _calibrate(d, values={"X1": 0.0, "X2": 1.5, "Y1": 0.4, "Y2": 1.1})
     assert d.status() == ST_REVIEW
@@ -301,7 +301,7 @@ def test_redetection_keeps_user_anchors_and_candidate_switch():
 
 
 def test_audit_json_and_csv_contents():
-    d = DigitizationDraft.from_image(_img("01_curva_simple"))
+    d = DigitizationDraft.from_image(_img("01_curva_simple"), ocr=False)
     assert "SIN CALIBRAR" in d.to_csv() and "current_density_A_cm2" not in d.to_csv()
     _calibrate(d, values={"X1": 0.0, "X2": 1.5, "Y1": 0.4, "Y2": 1.1})
     a = d.to_audit_dict()
@@ -405,3 +405,93 @@ def test_profile_with_digitized_curve_is_reproducible_and_not_validated():
     assert ds["metadata"]["quality"] == "digitalizado" and ds["source_sha256"] == d.image.sha256
     loaded = load_profile(text)
     assert loaded.reproduction_ok
+
+
+# ---------------------------------------------------------------------------- v0.3.0: reconocimiento automático
+def _fig_sci_x():
+    import matplotlib.pyplot as plt
+    j = np.linspace(0.05, 1.4, 60)
+    v = 1 - 0.06 * np.log(j / 0.01 + 1) - 0.25 * j
+    fig, ax = plt.subplots(figsize=(8, 5), dpi=100)
+    ax.plot(j * 2000, v * 40)
+    ax.set_xlim(0, 3000); ax.set_ylim(15, 45)
+    ax.ticklabel_format(style="sci", axis="x", scilimits=(0, 0))
+    ax.set_xlabel("I (mA)"); ax.set_ylabel("Stack voltage (V)")
+    buf = io.BytesIO(); fig.savefig(buf, format="png", dpi=100); plt.close(fig)
+    return buf.getvalue(), j * 2000, v * 40
+
+
+@pytest.mark.parametrize("name,curve,color", [("01_curva_simple", "Curva A", "#1465b0"),
+                                              ("02_dos_curvas", "Curva B", "#d45532")])
+def test_fully_automatic_calibration_without_typing(name, curve, color):
+    d = DigitizationDraft.from_image(_img(name))
+    assert d.axis_confirmed == {"X": True, "Y": True} and d.units_confirmed
+    assert (d.current_unit, d.voltage_unit) == ("A/cm²", "V") and "títulos" in d.units_source
+    assert {n: d.anchors[n].source for n in d.anchors} == {"X1": "auto-ocr", "X2": "auto-ocr", "Y1": "auto-ocr", "Y2": "auto-ocr"}
+    assert d.physical_ready()[0]
+    cand = next(c for c in d.detection.candidates if c.color_hex == color)
+    d.select_candidate(cand.id)
+    x, y, _ = d.physical()
+    rmse, cov = _evaluate(_truth(name, curve), np.c_[x, y])
+    assert rmse < 1.5e-3 and cov > 0.97
+    r = build_digitized_curve(d, CurveMetadata("auto", quality="digitalizado"), COND, DeviceInfo(name="D"), [], {})
+    assert r.ok and r.curve.mapping["axis_recognition"]["X"]["status"] == "CONFIABLE"
+    assert r.curve.mapping["axis_confirmed"] == {"X": True, "Y": True}
+
+
+def test_review_axis_blocks_physical_use_until_confirmed():
+    png, i_true, v_true = _fig_sci_x()
+    d = DigitizationDraft.from_image(load_image(png, "sci.png"))
+    assert d.axis_recognition["X"].status == "REVISION" and d.axis_recognition["X"].multiplier == 1000
+    assert d.anchors["X2"].value == pytest.approx(3000.0)           # valores ya escalados por el multiplicador
+    ok, why = d.physical_ready()
+    assert not ok and any("Eje X pendiente" in w for w in why)
+    r = build_digitized_curve(d, CurveMetadata("s", quality="digitalizado"), COND,
+                              DeviceInfo(name="D", n_cells=40, active_area_cm2=2000.0), [], {})
+    assert not r.ok and any("Confirmación pendiente" in str(i) for i in r.issues)
+    assert d.confirm_axis("X") and d.physical_ready()[0]
+    assert (d.current_unit, d.voltage_unit) == ("mA", "V")
+    d.undo()
+    assert not d.axis_confirmed["X"]                                   # deshacer también revierte la confirmación
+
+
+def test_individual_label_correction_and_exclusion():
+    d = DigitizationDraft.from_image(_img("01_curva_simple"))
+    rec = d.axis_recognition["Y"]
+    k = next(i for i, l in enumerate(rec.labels) if l.inlier and l.value == pytest.approx(0.7))
+    assert d.correct_label("Y", k, value=0.9)                          # lectura «equivocada» introducida a mano
+    rec = d.axis_recognition["Y"]
+    assert rec.status == "REVISION" and not d.axis_confirmed["Y"]
+    assert d.correct_label("Y", k, exclude=True)
+    assert d.axis_recognition["Y"].status == "CONFIABLE" and d.axis_confirmed["Y"]
+    assert any(e["action"] == "corregir_etiqueta" for e in d.audit)
+
+
+def test_ocr_never_overwrites_user_anchor_values():
+    d = DigitizationDraft.from_image(_img("01_curva_simple"))
+    d.set_anchor_position("X1", 150.0)
+    d.set_anchor_value("X1", 0.0)
+    d.run_detection(DetectionParams(n_points=20))
+    assert d.anchors["X1"].px == 150.0 and d.anchors["X1"].source == "usuario"
+
+
+def test_ocr_disabled_keeps_manual_v020_behaviour():
+    d = DigitizationDraft.from_image(_img("01_curva_simple"), ocr=False)
+    assert d.axis_recognition == {} and all(a.value is None for a in d.anchors.values())
+    assert not d.physical_ready()[0]
+
+
+def test_saved_curves_per_panel():
+    d = DigitizationDraft.from_image(_img("02_dos_curvas"))
+    lines = [c for c in d.detection.candidates if c.kind == "línea"]
+    d.select_candidate(lines[0].id)
+    d.save_curve("A")
+    with pytest.raises(ValueError, match="Ya existe"):
+        d.save_curve("A")
+    d.select_candidate(lines[1].id)
+    d.save_curve("B")
+    assert [c["name"] for c in d.saved_curves] == ["A", "B"]
+    assert d.load_saved_curve("A") and {p.origin for p in d.points} == {lines[0].id}
+    assert d.delete_saved_curve("B") and [c["name"] for c in d.saved_curves] == ["A"]
+    d.undo()
+    assert [c["name"] for c in d.saved_curves] == ["A", "B"]
