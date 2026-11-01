@@ -23,16 +23,44 @@ def _otekon_configured(at):
 
 
 # --------------------------------------------------------------------------- catálogo y dispositivos
+def test_home_is_default_and_navigates_to_both_engines():
+    at = new_app()
+    assert at.session_state.route["view"] == "home" and not at.exception
+    html = " ".join(h.proto.body for h in at.get("html"))
+    assert "Bienvenido a PEMFC ModelLab" in html and "¿Qué deseas hacer hoy?" in html
+    assert [t.label for t in at.tabs] == ["Acerca de ModelLab", "Motor 1", "Motor 2", "Modelo implementado"]
+    assert len(at.get("latex")) >= 7                                       # ecuaciones del modelo implementado
+    button(at, "Ver la página del Motor 2 →").click().run()
+    assert at.session_state.route["view"] == "motor2"
+    html = " ".join(h.proto.body for h in at.get("html"))
+    assert "Motor 2 — Simulación y análisis operacional" in html and "no disponibles todavía" in html
+    button(at, "← Volver a la página principal").click().run()
+    assert at.session_state.route["view"] == "home"
+    button(at, "Acceder al Motor 1 →").click().run()
+    assert at.session_state.route["view"] == "catalog" and not at.exception
+
+
+def test_model_section_matches_code_parameters():
+    from pemfc_core.parameters import PARAMETER_INFO
+    at = new_app()
+    df = next(d for d in at.dataframe if "identificable" in d.value.columns).value
+    assert list(df["parámetro"]) == list(PARAMETER_INFO)                   # tabla generada desde el código
+    assert set(df.loc[df["identificable"] == "sí", "parámetro"]) == {n for n, i in PARAMETER_INFO.items() if i.fittable}
+
+
 def test_catalog_welcome_and_empty_state():
     at = new_app()
+    at.session_state.route = {**at.session_state.route, "view": "catalog"}
+    at.run()
     html = " ".join(h.proto.body for h in at.get("html"))
-    assert "Motor 1 — Gestión e identificación de dispositivos PEMFC" in html
-    assert "Bienvenido al Motor 1" in html
+    assert "Bienvenido al Motor 1" in html and "MOTOR 1 · IDENTIFICACIÓN Y CALIBRACIÓN" in html
+    assert "modelos digitales calibrados y reproducibles" in html
     assert at.session_state.route["view"] == "catalog" and at.session_state.ws.devices == {}
 
 
 def test_create_device_dialog_requires_only_name():
     at = new_app()
+    at.session_state.route = {**at.session_state.route, "view": "catalog"}
     at.session_state.show_new_device = True
     at.run()
     assert button(at, "Crear dispositivo").disabled
@@ -230,3 +258,57 @@ def test_history_panel_active_profile_and_fork():
     assert not at.exception
     assert len(ws.drafts) == 2 and at.session_state.route["step"] == 3
     assert len(at.session_state.curves) == 4 and ws.calibrations[cal.id].content_sha256 == before
+
+
+# --------------------------------------------------------------------------- v0.3.1: gestión de dispositivos (UI)
+def _catalog_with_calibrated_device():
+    at = open_workspace(step=2, name="Stack gestionado")
+    _otekon_configured(at)
+    goto(at, 4)
+    at.button(key="run_fit").click().run()
+    at.session_state.route = {"view": "catalog", "device": None, "draft": None, "step": 1, "panel": "flujo"}
+    at.session_state.show_manage = True
+    at.run()
+    assert not at.exception
+    return at
+
+
+def test_manage_export_then_delete_with_exact_name_updates_catalog():
+    at = _catalog_with_calibrated_device()
+    ws = at.session_state.ws
+    (did,) = ws.devices
+    at.button(key=f"mg_exp_{did}").click().run()
+    name, data = at.session_state.mg_export[did]
+    assert name.endswith(".pmldevice.zip") and len(data) > 10_000
+    at.button(key=f"mg_del_{did}").click().run()
+    go = at.button(key=f"mg_go_{did}")
+    assert go.disabled                                                      # sin nombre: no se puede borrar
+    at.text_input(key="mg_delete_name").set_value("stack gestionado").run()
+    assert at.button(key=f"mg_go_{did}").disabled                           # nombre inexacto
+    at.text_input(key="mg_delete_name").set_value("Stack gestionado").run()
+    at.button(key=f"mg_go_{did}").click().run()
+    assert not at.exception and ws.devices == {} and not ws.calibrations and not ws.drafts
+    assert any(o.get("delete") for o in ws.pending())                        # el borrado se propagará al navegador
+    assert any("eliminado" in s.value for s in at.success)
+
+
+def test_manage_import_exported_package_new_copy_and_replace():
+    at = _catalog_with_calibrated_device()
+    ws = at.session_state.ws
+    (did,) = ws.devices
+    at.button(key=f"mg_exp_{did}").click().run()
+    _, data = at.session_state.mg_export[did]
+    up = next(u for u in at.get("file_uploader") if u.id.endswith("mg_up_0") or "mg_up_" in u.id)
+    up.set_value(("pkg.pmldevice.zip", data, "application/zip")).run()
+    assert not at.exception
+    assert at.radio(key=f"mg_strat_{did}").value == "copia"                 # conflicto detectado, opción por defecto
+    at.button(key="mg_do_import").click().run()
+    assert len(ws.devices) == 2 and any(d.name.endswith("(copia importada)") for d in ws.devices.values())
+    # reemplazo: exige confirmación explícita
+    up = next(u for u in at.get("file_uploader") if "mg_up_" in u.id)
+    up.set_value(("pkg.pmldevice.zip", data, "application/zip")).run()
+    at.radio(key=f"mg_strat_{did}").set_value("reemplazar").run()
+    assert at.button(key="mg_do_import").disabled
+    at.checkbox(key=f"mg_conf_{did}").check().run()
+    at.button(key="mg_do_import").click().run()
+    assert not at.exception and len(ws.devices) == 2 and did in ws.devices

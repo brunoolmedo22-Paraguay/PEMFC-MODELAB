@@ -57,6 +57,7 @@ async function putMany(items) {
     const tx = db.transaction(STORE, "readwrite");
     const st = tx.objectStore(STORE);
     for (const it of items) {
+      if (it.delete) { st.delete(it.key); saved.push(it.key); continue; }   // eliminación deliberada confirmada
       const g = st.get(it.key);
       g.onsuccess = () => {
         const cur = g.result;

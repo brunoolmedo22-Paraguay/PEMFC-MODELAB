@@ -26,11 +26,16 @@ function build(parent) {
     const o = el("option", null, t); o.value = v; sort.appendChild(o);
   }
   const count = el("span", "cat-count");
-  bar.append(search, fStatus, fMan, sort, count);
+  const manage = el("button", "cat-manage");
+  manage.type = "button";
+  manage.innerHTML = '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="18" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Gestionar dispositivos</span>';
+  manage.title = "Exportar, importar y eliminar dispositivos registrados";
+  bar.append(search, fStatus, fMan, sort, count, manage);
   const grid = el("div", "cat-grid"); grid.setAttribute("role", "list");
   root.append(bar, grid);
   parent.appendChild(root);
   const ctl = { root, grid, search, fStatus, fMan, sort, count, data: null, send: null };
+  manage.addEventListener("click", () => ctl.send && ctl.send("action", { type: "manage", t: Date.now() }));
   root.__ctl = ctl;
   const rerender = () => render(ctl);
   search.addEventListener("input", rerender); fStatus.addEventListener("change", rerender);

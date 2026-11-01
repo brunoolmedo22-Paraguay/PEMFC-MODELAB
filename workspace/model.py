@@ -267,6 +267,7 @@ class Workspace:
         self.exports: dict[str, ProfileExport] = {}
         self.blobs: dict[str, Blob] = {}
         self.dirty: set[str] = set()
+        self.deleted: set[str] = set()          # claves a borrar también en el almacenamiento persistente
         self.base_rev: dict[str, int] = {}     # revisión con la que se cargó cada registro mutable
 
     # ---------------------------------------------------------------- utilidades
@@ -283,6 +284,7 @@ class Workspace:
 
     def put_blob(self, name: str, data: bytes) -> str:
         sha = hashlib.sha256(data).hexdigest()
+        self.deleted.discard(f"blob:{sha}")
         if sha not in self.blobs:
             self.blobs[sha] = Blob(sha, name, len(data), b64encode(data))
             self.dirty.add(f"blob:{sha}")
@@ -427,6 +429,55 @@ class Workspace:
         self.dirty.add(f"export:{ex.id}")
         return ex
 
+    def device_keys(self, device_id: str) -> list[str]:
+        """Todas las claves de registros que pertenecen al dispositivo (sin binarios)."""
+        keys = [f"device:{device_id}"]
+        for kind in ("dataset", "draft", "calibration", "export"):
+            keys += [f"{kind}:{rid}" for rid, obj in self._store(kind).items() if obj.device_id == device_id]
+        return keys
+
+    def device_blob_refs(self, device_id: str) -> set[str]:
+        refs = set()
+        for kind in ("dataset", "draft"):
+            for obj in self._store(kind).values():
+                if obj.device_id == device_id:
+                    refs |= set(obj.originals.values())
+        return refs
+
+    def delete_device(self, device_id: str, confirm_name: str) -> dict:
+        """Elimina DELIBERADAMENTE un dispositivo y todo lo asociado. Exige repetir su nombre exacto.
+
+        Se borran sus conjuntos de datos, borradores, calibraciones, registros de exportación y los
+        binarios que ningún otro dispositivo use. Devuelve un resumen de lo eliminado.
+        """
+        d = self.devices.get(device_id)
+        if d is None:
+            raise WorkspaceError("Dispositivo inexistente.")
+        if str(confirm_name).strip() != d.name.strip():
+            raise WorkspaceError("Confirmación incorrecta: escriba exactamente el nombre del dispositivo.")
+        keys = self.device_keys(device_id)
+        own = self.device_blob_refs(device_id)
+        others = set()
+        for kind in ("dataset", "draft"):
+            for obj in self._store(kind).values():
+                if obj.device_id != device_id:
+                    others |= set(obj.originals.values())
+        summary = {"device": d.name, "datasets": 0, "drafts": 0, "calibrations": 0, "exports": 0, "blobs": 0}
+        for key in keys:
+            kind, rid = key.split(":", 1)
+            self._store(kind).pop(rid, None)
+            if kind != "device":
+                summary[kind + "s"] += 1
+            self.dirty.discard(key)
+            self.base_rev.pop(key, None)
+            self.deleted.add(key)
+        for sha in own - others:
+            if self.blobs.pop(sha, None) is not None:
+                summary["blobs"] += 1
+                self.dirty.discard(f"blob:{sha}")
+                self.deleted.add(f"blob:{sha}")
+        return summary
+
     # ---------------------------------------------------------------- consultas
     def device_calibrations(self, device_id: str) -> list[Calibration]:
         return sorted((c for c in self.calibrations.values() if c.device_id == device_id),
@@ -505,8 +556,8 @@ class Workspace:
         return None if obj is None else jsonable(asdict(obj))
 
     def pending(self) -> list[dict]:
-        """Operaciones de escritura pendientes (para el puente de almacenamiento)."""
-        ops = []
+        """Operaciones pendientes (escrituras y borrados) para el puente de almacenamiento."""
+        ops = [{"key": k, "delete": True} for k in sorted(self.deleted)]
         for key in sorted(self.dirty):
             val = self.record_value(key)
             if val is None:
@@ -519,6 +570,7 @@ class Workspace:
 
     def mark_saved(self, keys) -> None:
         for k in keys:
+            self.deleted.discard(k)
             self.dirty.discard(k)
             v = self.record_value(k)
             if v is not None and "rev" in v:
@@ -535,6 +587,7 @@ class Workspace:
         cls = _TYPES.get(kind)
         if cls is None:
             return
+        self.deleted.discard(key)
         obj = _from(cls, value)
         if kind == "calibration":
             expect = obj.content_sha256

@@ -4,7 +4,7 @@
 .tb-name { display: flex; flex-direction: column; line-height: 1.1; color: var(--pml-text); }
 .tb-name b { font-size: 16px; letter-spacing: -.01em; } .tb-ver { font-size: 11px; color: var(--pml-muted); font-family: var(--pml-mono); }
 .tb-nav { display: flex; gap: 4px; flex-wrap: wrap; }
-.tb-link { all: unset; font-size: 14px; font-weight: 550; padding: 7px 12px; border-radius: 8px; cursor: pointer; color: var(--pml-muted); transition: background .15s, color .15s; }
+.tb-link { all: unset; font-size: 14px; font-weight: 550; padding: 9px 13px; min-height: 22px; touch-action: manipulation; border-radius: 8px; cursor: pointer; color: var(--pml-muted); transition: background .15s, color .15s; }
 .tb-link:hover { background: var(--pml-surface); color: var(--pml-text); }
 .tb-link.on { color: var(--pml-accent); background: color-mix(in srgb, var(--pml-accent) 11%, transparent); }
 .tb-link:focus-visible { outline: 2px solid var(--pml-accent); }

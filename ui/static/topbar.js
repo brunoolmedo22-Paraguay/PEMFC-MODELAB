@@ -12,7 +12,8 @@ export default function (component) {
     const logo = el("span", "tb-logo"); logo.innerHTML = LOGO;
     const name = el("span", "tb-name"); name.append(el("b", null, "PEMFC ModelLab"), el("small", "tb-ver"));
     brand.append(logo, name);
-    brand.addEventListener("click", () => setTriggerValue("action", { type: "nav", view: "catalog", t: Date.now() }));
+    brand.addEventListener("click", () => setTriggerValue("action", { type: "nav", view: "home", t: Date.now() }));
+    brand.setAttribute("aria-label", "PEMFC ModelLab — página principal");
     const nav = el("nav", "tb-nav"); nav.setAttribute("aria-label", "Navegación principal");
     const save = el("div", "tb-save"); save.setAttribute("role", "status"); save.setAttribute("aria-live", "polite");
     root.append(brand, nav, save);
@@ -25,7 +26,8 @@ export default function (component) {
   for (const [v, t] of data.items) {
     const b = el("button", `tb-link${v === data.view ? " on" : ""}`, t); b.type = "button";
     b.setAttribute("aria-current", v === data.view ? "page" : "false");
-    b.addEventListener("click", () => { if (v !== data.view) setTriggerValue("action", { type: "nav", view: v, t: Date.now() }); });
+    // Se ignora solo si ya estamos EXACTAMENTE en esa vista (dentro de un dispositivo, «Motor 1» lleva al catálogo).
+    b.addEventListener("click", () => { if (v !== (data.route_view || data.view)) setTriggerValue("action", { type: "nav", view: v, t: Date.now() }); });
     c.nav.appendChild(b);
   }
   const s = data.save || {};

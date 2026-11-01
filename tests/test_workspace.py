@@ -267,3 +267,93 @@ def test_real_v020_profile_file_is_loadable_and_migrates():
     assert m.reproduction_ok and cal.profile == prof and cal.origin == "migrada_v020"
     assert any(c["meta"]["quality"] == "digitalizado" for c in ws.datasets[m.dataset_id].curves)
     assert ws.admin_status(m.device_id) in ("PERFIL_AJUSTADO", "EN_CALIBRACION")
+
+
+# --------------------------------------------------------------------------- v0.3.1: gestión de dispositivos
+from workspace.project_io import analyze_package, export_device  # noqa: E402
+
+
+def _device_with_history(otekon, name="Stack A"):
+    curves, cfg, _, prof = otekon
+    ws = Workspace()
+    d = ws.create_device(name, "Fab", "M1", n_cells=41, active_area_cm2=232.0)
+    dr = ws.new_draft(d.id)
+    ws.update_draft(dr.id, curves=[curve_to_dict(c) for c in curves], fit_config=cfg.to_dict())
+    ws.set_draft_originals(dr.id, {"fig.png": b"\x89PNG imagen de prueba"})
+    ws.add_dataset(d.id, "Datos OTEKON", "ejemplo", [curve_to_dict(c) for c in curves], {"fig.png": b"\x89PNG imagen de prueba"})
+    cal = ws.record_calibration(dr.id, prof, "dk", "ck")
+    ws.set_active_calibration(d.id, cal.id)
+    ws.record_export(cal.id, "p.json", b"{}")
+    return ws, d, cal
+
+
+def test_single_device_export_is_self_contained_and_reimportable(otekon):
+    ws, d, cal = _device_with_history(otekon)
+    other = ws.create_device("Otro dispositivo")
+    name, data = export_device(ws, d.id)
+    assert name.endswith(".pmldevice.zip") and d.id in name
+    fresh = Workspace()
+    an = analyze_package(fresh, data)
+    assert [x["id"] for x in an.devices] == [d.id] and not an.conflicts       # solo el dispositivo elegido
+    assert an.devices[0]["n_calibrations"] == 1 and an.devices[0]["n_datasets"] == 1 and an.devices[0]["n_drafts"] == 1
+    rep = import_project(fresh, data)
+    assert rep.ok and other.id not in fresh.devices
+    assert {k: v for k, v in fresh.all_records().items()} == {k: ws.record_value(k) for k in fresh.all_records()}
+    c2 = fresh.calibrations[cal.id]
+    assert c2.profile == cal.profile and load_profile(json.dumps(c2.profile)).reproduction_ok
+    assert fresh.devices[d.id].active_calibration_id == cal.id
+    assert fresh.originals_bytes(fresh.drafts[next(iter(fresh.drafts))].originals) == {"fig.png": b"\x89PNG imagen de prueba"}
+
+
+def test_import_conflict_strategies_copy_replace_skip(otekon):
+    ws, d, cal = _device_with_history(otekon)
+    _, data = export_device(ws, d.id)
+    an = analyze_package(ws, data)
+    assert an.conflicts and an.conflicts[0]["identical"]
+    # copia independiente: ids nuevos para el dispositivo y TODOS sus registros
+    rep = import_project(ws, data, {d.id: "copia"})
+    assert rep.ok and d.id in rep.copied
+    nid = rep.copied[d.id]
+    assert ws.devices[nid].name.endswith("(copia importada)") and len(ws.devices) == 2
+    cals = ws.device_calibrations(nid)
+    assert len(cals) == 1 and cals[0].id != cal.id and cals[0].profile == cal.profile
+    assert ws.devices[nid].active_calibration_id == cals[0].id
+    ws2, problems = Workspace.from_records(json.loads(json.dumps(ws.all_records())))
+    assert not problems                                              # las calibraciones copiadas se re-sellaron bien
+    # reemplazo (confirmado): la versión local modificada se sustituye por la del paquete
+    ws.update_device(d.id, notes="cambio local")
+    rep = import_project(ws, data, {d.id: "reemplazar"})
+    assert rep.ok and ws.devices[d.id].notes == "" and ws.calibrations[cal.id].content_sha256 == cal.content_sha256
+    # omitir: no cambia nada
+    before = ws.all_records()
+    rep = import_project(ws, data, {d.id: "omitir"})
+    assert ws.all_records() == before and not rep.added
+
+
+def test_delete_device_is_deliberate_complete_and_persisted(otekon):
+    ws, d, cal = _device_with_history(otekon)
+    keep = ws.create_device("Comparte imagen")
+    dr2 = ws.new_draft(keep.id)
+    ws.set_draft_originals(dr2.id, {"fig.png": b"\x89PNG imagen de prueba"})   # mismo binario
+    ws.mark_saved({o["key"] for o in ws.pending()})
+    with pytest.raises(WorkspaceError, match="Confirmación incorrecta"):
+        ws.delete_device(d.id, "stack a")
+    s = ws.delete_device(d.id, "Stack A")
+    assert s == {"device": "Stack A", "datasets": 1, "drafts": 1, "calibrations": 1, "exports": 1, "blobs": 0}
+    assert d.id not in ws.devices and not ws.device_calibrations(d.id) and cal.id not in ws.calibrations
+    assert len(ws.blobs) == 1                                          # binario compartido conservado
+    ops = ws.pending()
+    assert {o["key"] for o in ops if o.get("delete")} >= {f"device:{d.id}", f"calibration:{cal.id}"}
+    ws.mark_saved([o["key"] for o in ops])
+    assert not ws.deleted and not ws.pending()
+    ws.delete_device(keep.id, "Comparte imagen")
+    assert not ws.blobs and any(k.startswith("blob:") for k in ws.deleted)
+
+
+def test_zip_bomb_and_oversized_packages_rejected():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("manifest.json", "{}")
+        z.writestr("records/x.json", b"\0" * (60 * 1024 * 1024))
+    with pytest.raises(WorkspaceError, match="bomba"):
+        read_project(buf.getvalue())

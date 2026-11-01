@@ -1,4 +1,4 @@
-"""PEMFC ModelLab v0.3.0 — Gestión de dispositivos e identificación (Motor 1) + digitalizador.
+"""PEMFC ModelLab v0.3.1 — Gestión de dispositivos e identificación (Motor 1) + digitalizador.
 
 Ejecutar:  streamlit run app.py
 """
@@ -13,24 +13,33 @@ if str(ROOT) not in sys.path:
 
 import streamlit as st  # noqa: E402
 
-from ui import about_view, catalog_view, device_view, persistence, shell, state  # noqa: E402
+from ui import about_view, catalog_view, device_view, home_view, motor2_view, persistence, shell, state  # noqa: E402
 
 st.set_page_config(page_title="PEMFC ModelLab", page_icon="⚡", layout="wide")
+from digitizer import ocr as _ocr  # noqa: E402
+_ocr.warmup_async()          # el modelo OCR se carga en segundo plano: la primera imagen no lo espera
 state.init()
 persistence.init()
 shell.global_css()
 shell.topbar()
 
 route = shell.route()
-if route["view"] == "device":
+st.html(home_view.HOME_CSS)
+if route["view"] == "home":
+    home_view.render()
+elif route["view"] == "motor2":
+    motor2_view.render()
+elif route["view"] == "device":
     device_view.render()
 elif route["view"] == "digitizer":
     from ui import digitizer_page  # noqa: E402
     digitizer_page.render()
 elif route["view"] == "about":
     about_view.render()
-else:
+elif route["view"] == "catalog":
     catalog_view.render()
+else:
+    home_view.render()
 
 # Al final de cada ejecución: envía al navegador los registros modificados (autoguardado).
 persistence.render_bridge()

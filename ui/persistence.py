@@ -63,11 +63,11 @@ def status() -> dict:
     if s["state"] not in (ST_LOADING, ST_UNAVAILABLE, ST_CONFLICT):
         if _ss().ws_inflight:
             s["state"] = ST_SAVING
-        elif ws.dirty:
+        elif ws.dirty or ws.deleted:
             s["state"] = ST_PENDING
         else:
             s["state"] = ST_SAVED
-    s["dirty"] = len(ws.dirty)
+    s["dirty"] = len(ws.dirty) + len(ws.deleted)
     return s
 
 
@@ -132,6 +132,10 @@ def _on_ack() -> None:
         return
     ws = ss.ws
     for key in ack.get("saved", []):
+        if key in infl.get("deletes", []):
+            if key not in ws.dirty:                    # no se recreó entre el envío y el acuse
+                ws.deleted.discard(key)
+            continue
         sent = infl["values"].get(key)
         if sent is not None and json.dumps(ws.record_value(key), ensure_ascii=False) == sent["value"]:
             ws.mark_saved([key])
@@ -195,12 +199,14 @@ def render_bridge() -> None:
     infl = ss.ws_inflight
     if infl and time.time() - infl["sent"] > RESEND_AFTER_S:
         infl = ss.ws_inflight = None                    # sin acuse: se reenvía con secuencia nueva
-    if infl is None and ws.dirty and ss.ws_loaded and ss.ws_status["state"] != ST_UNAVAILABLE:
+    if infl is None and (ws.dirty or ws.deleted) and ss.ws_loaded and ss.ws_status["state"] != ST_UNAVAILABLE:
         ops = ws.pending()
         if ops:
             ss.ws_seq += 1
             ss.ws_inflight = infl = {"seq": ss.ws_seq, "sent": time.time(),
-                                     "values": {o["key"]: {"value": o["value"], "rev": o["rev"]} for o in ops},
+                                     "values": {o["key"]: {"value": o["value"], "rev": o["rev"]}
+                                                for o in ops if not o.get("delete")},
+                                     "deletes": [o["key"] for o in ops if o.get("delete")],
                                      "payload": {"seq": ss.ws_seq, "items": ops}}
     data = {"session": ss.ws_session, "write": infl["payload"] if infl else None, "read": ss.ws_read}
     comp = st.components.v2.component("pml_storage_bridge", js=_JS)

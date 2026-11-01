@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.3.1 — Página principal, gestión de dispositivos y correcciones de tablet (2026-11)
+
+Núcleo numérico intacto: `pemfc_core/model.py` e `identification/` sin cambios y OTEKON con Δ RMSE = 0,0.
+Sin dependencias nuevas.
+
+### Nuevo
+- **Página principal de ModelLab** (`ui/home_view.py`):
+  - bienvenida, «¿Qué deseas hacer hoy?» y tarjetas Motor 1 y Motor 2 con navegación;
+  - pestañas «Acerca de ModelLab», «Motor 1», «Motor 2» y «Modelo implementado», con las ecuaciones, parámetros, hipótesis y limitaciones tomadas del código de `pemfc_core`.
+- **Motor 2** (`ui/motor2_view.py`): página «en construcción». No implementa simulación.
+- **Gestión de dispositivos en el catálogo** (`ui/device_admin.py`):
+  - exportar un dispositivo como `.pmldevice.zip` (metadatos, experimentos, calibraciones con su perfil, borradores, exportaciones y binarios, con manifiesto y huellas SHA-256);
+  - importar con validación y tratamiento explícito de identificadores duplicados;
+  - eliminar con confirmación escribiendo el nombre;
+  - el catálogo y la persistencia del navegador se actualizan tras cada operación.
+- **Encabezado del Motor 1:** «Bienvenido al Motor 1» con su subtítulo.
+
+### Corregido
+- **Tablet, encabezado:** los enlaces Digitalizador y Alcance quedaban bajo la franja transparente de la barra nativa de Streamlit. La barra superior se reorganizó para que sean accesibles; verificado con toques en un viewport táctil de 1024×768.
+- **Tablet, primera carga del digitalizador:**
+  - el borrador se crea ahora de forma atómica: el archivo solo se marca como procesado si el procesamiento termina bien. Antes, una interrupción podía dejarlo marcado sin borrador, lo que obligaba a cargarlo dos veces;
+  - el modelo OCR se precarga en segundo plano al iniciar el servidor;
+  - el progreso es visible durante la carga.
+
 ## v0.3.0 — Gestión de dispositivos y digitalización inteligente (2026-11)
 
 El Motor 1 pasa de ser una aplicación por pestañas a un entorno de **gestión de dispositivos PEMFC**:

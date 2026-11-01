@@ -157,3 +157,49 @@ def test_new_image_with_edited_draft_asks_before_discarding():
     _btn(at, "Descartar borrador y usar la nueva imagen").click().run()
     assert at.session_state.dz_draft.image.sha256 != sha
     assert len([c for c in at.session_state.dz_draft.detection.candidates if c.kind == "línea"]) == 2
+
+
+# --------------------------------------------------------------------------- v0.3.1: primera carga de imágenes
+def test_first_upload_loads_once_with_visible_progress_and_timings():
+    at = _app()
+    _open_and_upload(at)
+    d = at.session_state.dz_draft
+    assert d is not None and len(d.points) == 40                         # primer intento, sin repetir
+    assert set(d.timings) >= {"total_s", "deteccion_s", "ocr_s"}
+    assert any(e["action"] == "procesamiento_inicial" for e in d.audit)
+    assert not at.session_state.get("dz_failed_upload")
+
+
+def test_failed_processing_is_recoverable_and_same_file_can_be_retried(monkeypatch):
+    """Un fallo (p. ej. transitorio) no deja el archivo «marcado»: volver a seleccionarlo lo reprocesa."""
+    from digitizer import draft as draft_mod
+    real = draft_mod.DigitizationDraft.from_image.__func__
+    calls = {"n": 0}
+
+    def flaky(cls, *a, **k):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("fallo simulado durante el procesamiento")
+        return real(cls, *a, **k)
+    monkeypatch.setattr(draft_mod.DigitizationDraft, "from_image", classmethod(flaky))
+    at = _app()
+    _open_and_upload(at)
+    assert at.session_state.get("dz_draft") is None and not at.exception
+    assert any("No se pudo procesar" in e.value for e in at.error)
+    at.run()                                                              # reejecución sin nueva selección: no reintenta
+    assert calls["n"] == 1
+    up = next(u for u in at.get("file_uploader") if "dz_up_" in u.id)
+    up.set_value(("01_curva_simple.png", PNG, "image/png")).run()        # nueva selección del MISMO archivo
+    assert at.session_state.dz_draft is not None and calls["n"] == 2
+
+
+def test_consecutive_and_changed_images():
+    at = _app()
+    _open_and_upload(at)
+    sha1 = at.session_state.dz_draft.image.sha256
+    up = next(u for u in at.get("file_uploader") if "dz_up_" in u.id)
+    up.set_value(("02.png", (FX / "02_dos_curvas.png").read_bytes(), "image/png")).run()   # sin trabajo: cambia directo
+    assert at.session_state.dz_draft.image.sha256 != sha1
+    up = next(u for u in at.get("file_uploader") if "dz_up_" in u.id)
+    up.set_value(("01.png", PNG, "image/png")).run()
+    assert at.session_state.dz_draft.image.sha256 == sha1 and not at.exception

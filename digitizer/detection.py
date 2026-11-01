@@ -29,6 +29,7 @@ import numpy as np
 from . import ALGORITHM_ID, DIGITIZER_VERSION
 
 MAX_ANALYSIS_PIXELS = 8_000_000
+MAX_ANALYSIS_SIDE_PX = 2400        # fotos/capturas de tablet: los umbrales (grosor de líneas, bandas) son relativos a esta escala
 
 
 # ---------------------------------------------------------------------------
@@ -544,8 +545,8 @@ def detect(rgb: np.ndarray, params: DetectionParams | None = None) -> DetectionR
     notes: list[str] = []
     H0, W0 = rgb.shape[:2]
     scale = 1.0
-    if H0 * W0 > MAX_ANALYSIS_PIXELS:
-        scale = math.sqrt(MAX_ANALYSIS_PIXELS / (H0 * W0))
+    if H0 * W0 > MAX_ANALYSIS_PIXELS or max(H0, W0) > MAX_ANALYSIS_SIDE_PX:
+        scale = min(math.sqrt(MAX_ANALYSIS_PIXELS / (H0 * W0)), MAX_ANALYSIS_SIDE_PX / max(H0, W0))
         rgb = cv2.resize(rgb, (int(W0 * scale), int(H0 * scale)), interpolation=cv2.INTER_AREA)
         notes.append(f"Imagen grande: análisis a escala {scale:.3f}; coordenadas reescaladas al original.")
     Hh, W = rgb.shape[:2]

@@ -26,7 +26,11 @@ from .model import (
 from .serialization import SerializationError, curve_from_profile_dataset, curve_to_dict, jsonable
 
 PROJECT_SUFFIX = ".pmlproj.zip"
-MAX_PROJECT_BYTES = 150 * 1024 * 1024
+DEVICE_SUFFIX = ".pmldevice.zip"
+MAX_PROJECT_BYTES = 150 * 1024 * 1024          # archivo comprimido
+MAX_UNCOMPRESSED_BYTES = 600 * 1024 * 1024     # suma descomprimida (protección contra bombas ZIP)
+MAX_ENTRIES = 20_000
+MAX_RATIO = 200                                # compresión máxima admitida por entrada
 
 
 # --------------------------------------------------------------------------- huellas (misma semántica que v0.2.0)
@@ -110,6 +114,17 @@ def read_project(data: bytes) -> tuple[dict, dict[str, dict], dict[str, tuple[st
         z = zipfile.ZipFile(io.BytesIO(data))
     except zipfile.BadZipFile as exc:
         raise WorkspaceError(f"No es un proyecto válido (ZIP ilegible): {exc}") from exc
+    infos = z.infolist()
+    if len(infos) > MAX_ENTRIES:
+        raise WorkspaceError(f"Demasiadas entradas en el ZIP ({len(infos)}).")
+    total = 0
+    for info in infos:
+        total += info.file_size
+        if info.file_size > 0 and info.compress_size > 0 and info.file_size / info.compress_size > MAX_RATIO \
+                and info.file_size > 1_000_000:
+            raise WorkspaceError(f"Compresión anómala en {info.filename!r} (posible bomba ZIP).")
+    if total > MAX_UNCOMPRESSED_BYTES:
+        raise WorkspaceError(f"El contenido descomprimido ({total / 1e6:.0f} MB) supera el máximo admitido.")
     names = set(z.namelist())
     if "manifest.json" not in names:
         raise WorkspaceError("Falta manifest.json: no es un proyecto de PEMFC ModelLab.")
@@ -139,29 +154,98 @@ def read_project(data: bytes) -> tuple[dict, dict[str, dict], dict[str, tuple[st
     return manifest, records, blobs
 
 
-def import_project(ws: Workspace, data: bytes) -> ImportReport:
-    """Fusiona un proyecto en el espacio de trabajo sin sobrescribir nada."""
+@dataclass
+class PackageAnalysis:
+    """Resumen previo a importar (no modifica nada)."""
+    manifest: dict
+    devices: list[dict]                       # [{id, name, manufacturer, model, n_calibrations, …, conflict}]
+    n_records: int
+    n_blobs: int
+    warnings: list[str] = field(default_factory=list)
+
+    @property
+    def conflicts(self) -> list[dict]:
+        return [d for d in self.devices if d["conflict"]]
+
+
+def analyze_package(ws: Workspace, data: bytes) -> PackageAnalysis:
+    """Valida el paquete (integridad, rutas, tamaño, versión) y detecta conflictos de identificador."""
     manifest, records, blobs = read_project(data)
+    devs = []
+    for key, val in records.items():
+        if not key.startswith("device:"):
+            continue
+        rid = key.split(":", 1)[1]
+        count = lambda kind: sum(1 for k, v in records.items() if k.startswith(kind + ":") and v.get("device_id") == rid)  # noqa: E731
+        existing = ws.devices.get(rid)
+        same = existing is not None and canonical_sha256(ws.record_value(key)) == canonical_sha256(val)
+        devs.append({"id": rid, "name": val.get("name", ""), "manufacturer": val.get("manufacturer", ""),
+                     "model": val.get("model", ""), "n_calibrations": count("calibration"),
+                     "n_drafts": count("draft"), "n_datasets": count("dataset"),
+                     "conflict": existing is not None, "identical": same,
+                     "existing_name": existing.name if existing else None})
+    warns = []
+    if manifest.get("app_version") and manifest["app_version"] != APP_VERSION:
+        warns.append(f"Paquete creado con PEMFC ModelLab {manifest['app_version']} (esta es {APP_VERSION}); el "
+                     "esquema es compatible.")
+    return PackageAnalysis(manifest, devs, len(records), len(blobs), warns)
+
+
+def import_project(ws: Workspace, data: bytes, strategy: dict[str, str] | None = None) -> ImportReport:
+    """Importa un paquete. ``strategy``: id de dispositivo en conflicto → «copia» | «reemplazar» | «omitir».
+
+    Por defecto (sin estrategia) nunca se sobrescribe: lo distinto entra como copia. «reemplazar» elimina
+    primero el dispositivo existente y todo lo asociado (debe haberlo confirmado el usuario).
+    """
+    manifest, records, blobs = read_project(data)
+    strategy = dict(strategy or {})
+    skip_devices = {did for did, s in strategy.items() if s == "omitir"}
+    if skip_devices:
+        records = {k: v for k, v in records.items()
+                   if not ((k.startswith("device:") and k.split(":", 1)[1] in skip_devices)
+                           or v.get("device_id") in skip_devices)}
+    for did, s in strategy.items():
+        if s == "reemplazar" and did in ws.devices:
+            ws.delete_device(did, ws.devices[did].name)
     rep = ImportReport()
     for sha, (name, raw) in blobs.items():
         ws.put_blob(name, raw)
+
+    # Copias independientes forzadas: id nuevo para el dispositivo y para TODOS sus registros.
     remap: dict[str, str] = {}
+    prefix = {"device": "dev", "dataset": "set", "draft": "drf", "calibration": "cal", "export": "out"}
+    for did in [d for d, s in strategy.items() if s == "copia"]:
+        for key, val in records.items():
+            kind, rid = key.split(":", 1)
+            if (kind == "device" and rid == did) or val.get("device_id") == did:
+                remap[rid] = new_id(prefix[kind])
 
     def _apply_remap(val: dict) -> dict:
-        val = dict(val)
-        for k in ("device_id", "draft_id", "calibration_id"):
+        val = json.loads(json.dumps(val))
+        if val.get("id") in remap:
+            val["id"] = remap[val["id"]]
+        for k in ("device_id", "draft_id", "calibration_id", "active_calibration_id"):
             if val.get(k) in remap:
                 val[k] = remap[val[k]]
-        if "calibration_ids" in val:
-            val["calibration_ids"] = [remap.get(x, x) for x in val["calibration_ids"]]
-        if val.get("active_calibration_id") in remap:
-            val["active_calibration_id"] = remap[val["active_calibration_id"]]
+        for k in ("calibration_ids", "dataset_ids"):
+            if k in val:
+                val[k] = [remap.get(x, x) for x in val[k]]
         return val
 
     order = {"device": 0, "dataset": 1, "draft": 2, "calibration": 3, "export": 4}
     for key in sorted(records, key=lambda k: order.get(k.split(":", 1)[0], 9)):
         kind, rid = key.split(":", 1)
+        forced = rid in remap
         val = _apply_remap(records[key])
+        if forced:
+            key = f"{kind}:{val['id']}"
+            if kind == "device":
+                val["name"] = f"{val['name']} (copia importada)"
+                rep.copied[rid] = val["id"]
+            if kind == "calibration":
+                val["content_sha256"] = ""                       # se vuelve a sellar con el id remapeado
+                from .model import Calibration as _Cal, _from as _mk
+                val["content_sha256"] = _mk(_Cal, val).seal().content_sha256
         existing = ws.record_value(key)
         if existing is not None:
             if canonical_sha256(existing) == canonical_sha256(val):
@@ -170,7 +254,7 @@ def import_project(ws: Workspace, data: bytes) -> ImportReport:
             if kind in ("dataset", "calibration", "export"):
                 rep.rejected.append(f"{key}: ya existe con contenido distinto (registro inmutable); no se importa.")
                 continue
-            nid = new_id({"device": "dev", "draft": "drf"}[kind])
+            nid = new_id(prefix[kind])                             # conflicto no resuelto explícitamente → copia
             remap[rid] = nid
             val = dict(val, id=nid)
             if kind == "device":
@@ -186,17 +270,32 @@ def import_project(ws: Workspace, data: bytes) -> ImportReport:
             rep.added.append(key)
         except (WorkspaceError, TypeError, ValueError, KeyError) as exc:
             rep.rejected.append(f"{key}: {exc}")
-    # tras remapear dispositivos, las referencias de registros ya cargados se corrigen
-    for key in list(rep.added):
+    for key in list(rep.added):                                 # referencias a copias creadas por conflicto
         kind, rid = key.split(":", 1)
         obj = ws._store(kind)[rid]
         for attr in ("device_id", "draft_id"):
             if getattr(obj, attr, None) in remap:
                 setattr(obj, attr, remap[getattr(obj, attr)])
-    rep.messages.append(f"Proyecto v{manifest.get('app_version')} ({manifest.get('created_utc')}): "
+    replaced = [d for d, s in strategy.items() if s == "reemplazar"]
+    rep.messages.append(f"Paquete v{manifest.get('app_version')} ({manifest.get('created_utc')}): "
                         f"{len(rep.added)} registro(s) añadidos, {len(rep.skipped_identical)} idénticos omitidos, "
-                        f"{len(rep.copied)} copiados con id nuevo, {len(rep.rejected)} rechazados.")
+                        f"{len(rep.copied)} dispositivo(s)/borrador(es) como copia, {len(replaced)} reemplazado(s), "
+                        f"{len(rep.rejected)} rechazados.")
     return rep
+
+
+def export_device(ws: Workspace, device_id: str) -> tuple[str, bytes]:
+    """Paquete autosuficiente de UN dispositivo (registros, curvas, calibraciones, perfiles y originales)."""
+    if device_id not in ws.devices:
+        raise WorkspaceError("Dispositivo inexistente.")
+    missing = [s for s in ws.device_blob_refs(device_id) if s not in ws.blobs]
+    if missing:
+        raise WorkspaceError(f"Faltan {len(missing)} archivo(s) original(es) en memoria; ábralos antes de exportar "
+                             "(se recuperan del navegador al abrir el dispositivo).")
+    data = export_project(ws, [device_id])
+    import re as _re
+    safe = _re.sub(r"[^\w.-]+", "_", ws.devices[device_id].name).strip("_")[:60] or "dispositivo"
+    return f"{safe}__{device_id}{DEVICE_SUFFIX}", data
 
 
 # --------------------------------------------------------------------------- migración de perfiles v0.2.0

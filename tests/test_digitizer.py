@@ -495,3 +495,15 @@ def test_saved_curves_per_panel():
     assert d.delete_saved_curve("B") and [c["name"] for c in d.saved_curves] == ["A"]
     d.undo()
     assert [c["name"] for c in d.saved_curves] == ["A", "B"]
+
+
+def test_high_resolution_tablet_sized_image_is_recognized_and_accurate():
+    """Imagen 3× (3600 px, típica de capturas/fotos de tablet): ejes confiables y la misma exactitud relativa."""
+    big = Image.open(FX / "01_curva_simple.png").convert("RGB").resize((3600, 2250), Image.Resampling.LANCZOS)
+    buf = io.BytesIO(); big.save(buf, format="PNG")
+    d = DigitizationDraft.from_image(load_image(buf.getvalue(), "big.png"))
+    assert d.axis_confirmed == {"X": True, "Y": True} and d.units_confirmed
+    assert d.detection.analysis_scale < 1.0                     # análisis normalizado por el lado mayor
+    x, y, _ = d.physical()
+    rmse, cov = _evaluate(_truth("01_curva_simple", "Curva A"), np.c_[x, y])
+    assert rmse < 1.5e-3 and cov > 0.97

@@ -12,8 +12,9 @@ from . import persistence
 
 STATIC = Path(__file__).resolve().parent / "static"
 _KIT = (STATIC / "ui_kit.css").read_text(encoding="utf-8")
-VIEWS = ("catalog", "device", "digitizer", "about")
-NAV_ITEMS = [("catalog", "Motor 1 · Dispositivos"), ("digitizer", "Digitalizador"), ("about", "Alcance y método")]
+VIEWS = ("home", "catalog", "device", "motor2", "digitizer", "about")
+NAV_ITEMS = [("home", "Inicio"), ("catalog", "Motor 1"), ("motor2", "Motor 2"), ("digitizer", "Digitalizador"),
+             ("about", "Alcance")]
 
 
 def _asset(name: str) -> str:
@@ -37,11 +38,29 @@ def payload(key: str, field: str = "action"):
 
 GLOBAL_CSS = """
 <style>
-.block-container { padding-top: 1.1rem !important; padding-bottom: 5rem !important; max-width: 1360px; }
+/* La cabecera nativa de Streamlit (3,75 rem) es una franja fija y transparente sobre la página. Se reserva su
+   altura para que la barra propia quede DEBAJO (solución estructural) y, además, la franja transparente deja de
+   capturar toques: solo sus propios botones (menú, despliegue) siguen siendo interactivos. */
+.block-container { padding-top: calc(3.75rem + 0.6rem) !important; padding-bottom: 5rem !important; max-width: 1360px; }
 h1, h2, h3 { letter-spacing: -0.012em; }
-[data-testid="stHeader"] { background: transparent; }
+[data-testid="stHeader"] { background: transparent; pointer-events: none; }
+[data-testid="stHeader"] [data-testid="stToolbar"], [data-testid="stHeader"] button, [data-testid="stHeader"] a,
+[data-testid="stHeader"] [role="button"] { pointer-events: auto; }
 .pml-hero h1 { font-size: 1.85rem; margin: .4rem 0 .35rem 0; line-height: 1.15; }
 .pml-hero p { max-width: 920px; opacity: .82; font-size: 1.02rem; margin: 0 0 .4rem 0; }
+.m1-hero { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem;
+  padding: 1.15rem 1.4rem; margin: .35rem 0 .9rem 0; border-radius: 16px; overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--primary-color, #0E7C86) 22%, rgba(128,128,128,.25));
+  background: linear-gradient(120deg, color-mix(in srgb, var(--primary-color, #0E7C86) 9%, transparent) 0%, transparent 62%); }
+.m1-hero::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--primary-color, #0E7C86); }
+.m1-text { min-width: 0; }
+.m1-chip { display: inline-flex; align-items: center; gap: .45rem; font-size: .7rem; font-weight: 750; letter-spacing: .13em;
+  color: var(--primary-color, #0E7C86); }
+.m1-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 18%, transparent); }
+.m1-hero h1 { font-size: clamp(1.45rem, 1.1rem + 1.4vw, 2.05rem); margin: .35rem 0 .3rem 0; line-height: 1.12; letter-spacing: -.02em; }
+.m1-hero p { margin: 0; max-width: 760px; opacity: .8; font-size: 1rem; line-height: 1.5; }
+.m1-art { flex: none; width: 210px; height: auto; color: var(--primary-color, #0E7C86); opacity: .9; }
+@media (max-width: 720px) { .m1-art { display: none; } .m1-hero { padding: 1rem 1.1rem; } }
 .pml-eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: .72rem; font-weight: 700; color: var(--primary-color, #0E7C86); }
 .pml-section-title { font-size: 1.12rem; font-weight: 700; margin: .2rem 0 .1rem 0; }
 .pml-muted { opacity: .72; font-size: .9rem; }
@@ -66,11 +85,13 @@ def route() -> dict:
     ss = st.session_state
     if "route" not in ss:
         qp = st.query_params
-        view = qp.get("view", "catalog")
+        view = qp.get("view", "home")
         step = qp.get("step", "1")
-        ss.route = {"view": view if view in VIEWS else "catalog", "device": qp.get("device"),
+        ss.route = {"view": view if view in VIEWS else "home", "device": qp.get("device"),
                     "draft": qp.get("draft"), "step": int(step) if str(step).isdigit() and 1 <= int(step) <= 6 else 1,
                     "panel": qp.get("panel", "flujo")}
+        if ss.route["view"] not in VIEWS:
+            ss.route["view"] = "home"
     return ss.route
 
 
@@ -125,7 +146,7 @@ def _on_topbar() -> None:
 def topbar() -> None:
     r = route()
     view = "catalog" if r["view"] == "device" else r["view"]
-    component("topbar")(key="pml_topbar", data={"version": APP_VERSION, "view": view, "items": NAV_ITEMS,
+    component("topbar")(key="pml_topbar", data={"version": APP_VERSION, "view": view, "route_view": r["view"], "items": NAV_ITEMS,
                                                 "save": save_indicator()}, on_action_change=_on_topbar)
     s = persistence.status()
     if s["state"] in ("conflicto", "no_disponible") and s.get("message"):

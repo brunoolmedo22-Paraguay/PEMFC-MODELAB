@@ -133,21 +133,43 @@ def _reset_metadata_widgets(stem: str) -> None:
     ss["dz_prov"] = ""
 
 
-def _new_draft(data: bytes, name: str) -> bool:
+def _new_draft(data: bytes, name: str, progress=None, upload_id: str | None = None) -> bool:
+    """Crea el borrador de forma ATÓMICA: el estado solo cambia si todo el procesamiento termina bien.
+
+    Así, si la ejecución se interrumpe o falla, la siguiente ejecución vuelve a procesar el archivo (no queda
+    «marcado como procesado» sin borrador, que obligaría a cargarlo dos veces).
+    """
+    ss = _ss()
     try:
+        if progress:
+            progress(f"Validando «{name}»…")
         img = load_image(data, name)
+        d = DigitizationDraft.from_image(img, progress=progress)
     except ImageLoadError as exc:
-        _ss()["dz_load_error"] = f"Imagen rechazada ({name}): {exc}"
+        ss["dz_load_error"] = f"Imagen rechazada ({name}): {exc}"
+        ss["dz_failed_upload"] = upload_id
         return False
-    d = DigitizationDraft.from_image(img)
-    _ss()["dz_draft"] = d
-    _ss()["dz_panels"] = {int(d.panel_index or 0): d}       # cada panel conserva su propio borrador
-    _ss()["dz_export"] = None
-    _ss()["dz_load_error"] = None
-    _ss()["dz_pending"] = None
+    except Exception as exc:  # noqa: BLE001 — error recuperable: la sesión y el borrador anterior se conservan
+        ss["dz_load_error"] = f"No se pudo procesar «{name}»: {exc}"
+        ss["dz_failed_upload"] = upload_id
+        return False
+    ss["dz_draft"] = d
+    ss["dz_panels"] = {int(d.panel_index or 0): d}       # cada panel conserva su propio borrador
+    ss["dz_export"] = None
+    ss["dz_load_error"] = None
+    ss["dz_failed_upload"] = None
+    ss["dz_pending"] = None
+    t = getattr(d, "timings", {})
+    ss["dz_loaded_msg"] = (f"Imagen procesada en {t.get('total_s', 0):.1f} s (detección {t.get('deteccion_s', 0):.1f} s"
+                           + (f", OCR {t['ocr_s']:.1f} s" if "ocr_s" in t else "") + ").")
     _sync_widgets(d)
     _reset_metadata_widgets(Path(img.filename).stem)
     return True
+
+
+def _sha(data: bytes) -> str:
+    import hashlib
+    return hashlib.sha256(data).hexdigest()
 
 
 def _draft_has_work(d: DigitizationDraft) -> bool:
@@ -300,7 +322,7 @@ def _on_curve_action(action: str) -> None:
 # ---------------------------------------------------------------------------
 # contextos aislados: cada identificación del Motor 1 y el modo autónomo tienen su propio digitalizador
 # ---------------------------------------------------------------------------
-_CTX_KEYS = ("dz_draft", "dz_panels", "dz_pending", "dz_load_error", "dz_last_upload_sha", "dz_flash", "dz_open",
+_CTX_KEYS = ("dz_draft", "dz_panels", "dz_pending", "dz_load_error", "dz_failed_upload", "dz_flash", "dz_open",
              "dz_export")
 
 
@@ -405,8 +427,7 @@ def _pending_choice(accept: bool) -> None:
     if accept and pend:
         _new_draft(*pend)
     else:
-        ss["dz_upload_nonce"] = ss.get("dz_upload_nonce", 0) + 1
-        ss["dz_last_upload_sha"] = None      # volver a subir el mismo archivo debe preguntar de nuevo
+        ss["dz_upload_nonce"] = ss.get("dz_upload_nonce", 0) + 1     # vacía el selector de archivos
 
 
 def _upload_section(d: DigitizationDraft | None) -> None:
@@ -419,15 +440,19 @@ def _upload_section(d: DigitizationDraft | None) -> None:
                                "no se envía a servicios externos ni se guarda en disco. SVG no se admite.")
     if up is not None:
         data = up.getvalue()
-        import hashlib
-        sha = hashlib.sha256(data).hexdigest()
-        if sha != ss.get("dz_last_upload_sha"):
-            ss["dz_last_upload_sha"] = sha            # cada archivo subido se procesa una sola vez
-            if d is None or sha != d.image.sha256:
-                if d is not None and _draft_has_work(d):
+        sha = _sha(data)
+        upload_id = getattr(up, "file_id", None) or f"{up.name}:{sha}"
+        # Idempotente: se procesa mientras no exista un borrador de ESTE archivo. Un fallo no se reintenta en cada
+        # reejecución, pero sí si el usuario vuelve a seleccionar el archivo (nueva subida = nuevo file_id).
+        if (d is None or sha != d.image.sha256) and upload_id != ss.get("dz_failed_upload"):
+            if d is not None and _draft_has_work(d):
+                if not ss.get("dz_pending") or _sha(ss["dz_pending"][0]) != sha:
                     ss["dz_pending"] = (data, up.name)
-                else:
-                    _new_draft(data, up.name)
+            else:
+                with st.status(f"Procesando «{up.name}»…", expanded=True) as status:
+                    ok = _new_draft(data, up.name, progress=status.write, upload_id=upload_id)
+                    status.update(label=("Imagen cargada." if ok else "No se pudo cargar la imagen."),
+                                  state="complete" if ok else "error", expanded=not ok)
     if ss.get("dz_load_error"):
         st.error(ss["dz_load_error"] + " El borrador anterior (si lo había) se conserva.")
     pend = ss.get("dz_pending")
@@ -925,6 +950,9 @@ def render_body(mode: str = "motor1") -> None:
                + (" · ✎ **trazo intervenido manualmente**" if d.manually_edited else ""))
     if d.last_error:
         st.error(d.last_error)
+    msg = _ss().pop("dz_loaded_msg", None)
+    if msg:
+        st.toast(msg)
     if _ss().get("dz_confirm_redetect"):
         st.warning("Reidentificar reemplaza el trazo actual (las ediciones manuales se pierden del trazo, aunque "
                    "quedan en el historial y se pueden deshacer). Las anclas que usted editó se conservan.")

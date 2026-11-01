@@ -100,11 +100,18 @@ class DigitizationDraft:
     # ------------------------------------------------------------------ creación
     @classmethod
     def from_image(cls, image: LoadedImage, params: DetectionParams | None = None,
-                   ocr: bool = True) -> "DigitizationDraft":
+                   ocr: bool = True, progress=None) -> "DigitizationDraft":
+        """``progress``: función opcional que recibe mensajes de fase (indicador visible en la interfaz)."""
+        import time as _t
         d = cls(image=image, params=params or DetectionParams(), ocr_enabled=ocr)
+        d._progress = progress
         d.anchors = {n: Anchor(n) for n in ANCHOR_NAMES}
         d._log("imagen_cargada", image.describe())
+        t0 = _t.perf_counter()
         d.run_detection(initial=True)
+        d.timings = {"total_s": round(_t.perf_counter() - t0, 3), **getattr(d, "timings", {})}
+        d._log("procesamiento_inicial", dict(d.timings))
+        d._progress = None
         return d
 
     def run_detection(self, params: DetectionParams | None = None, initial: bool = False) -> None:
@@ -113,6 +120,11 @@ class DigitizationDraft:
             self.params = params
         if not initial:
             self._push_undo()
+        import time as _t
+        prog = getattr(self, "_progress", None)
+        if prog:
+            prog("Detectando paneles, ejes y trazos…")
+        t0 = _t.perf_counter()
         try:
             res = detect(self.image.rgb, self.params)
         except Exception as exc:  # recuperable: se conserva la imagen y el borrador
@@ -157,8 +169,13 @@ class DigitizationDraft:
         self.extraction_method = "automático"
         self._log("deteccion_automatica", {"summary": res.summary(), "selected": self.selected_candidate})
         self.panel_index = res.panel_index
+        self.timings = {"deteccion_s": round(_t.perf_counter() - t0, 3)}
         if self.ocr_enabled and res.panel_index is not None and res.panels:
+            if prog:
+                prog("Reconociendo los números de los ejes (OCR local)…")
+            t1 = _t.perf_counter()
             self._recognize_axes()
+            self.timings["ocr_s"] = round(_t.perf_counter() - t1, 3)
         self._bump()
 
     def _points_from_candidate(self, cand: TraceCandidate) -> None:

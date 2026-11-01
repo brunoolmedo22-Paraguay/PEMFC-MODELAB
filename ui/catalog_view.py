@@ -8,11 +8,21 @@ import streamlit as st
 from workspace.model import ADM_TEXT, WorkspaceError
 from workspace.project_io import PROJECT_SUFFIX, export_project, import_project, import_v020_profile
 
-from . import persistence, shell
+from . import device_admin, persistence, shell
 
-INTRO = ("Bienvenido al Motor 1. Este entorno está diseñado para incorporar, caracterizar, calibrar y administrar "
-         "dispositivos PEMFC, generando perfiles electroquímicos reproducibles para su posterior utilización en "
-         "simulaciones y sistemas energéticos.")
+INTRO = ("Registra tus dispositivos PEMFC, incorpora datos experimentales e identifica sus parámetros para construir "
+         "modelos digitales calibrados y reproducibles.")
+
+# Curva de polarización estilizada (recurso gráfico del módulo; no representa datos).
+MOTOR1_ART = """<svg class="m1-art" viewBox="0 0 220 120" aria-hidden="true">
+  <defs><linearGradient id="m1g" x1="0" x2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".9"/>
+  <stop offset="1" stop-color="currentColor" stop-opacity=".35"/></linearGradient></defs>
+  <path d="M14 14 V106 H210" fill="none" stroke="currentColor" stroke-opacity=".28" stroke-width="1.6"/>
+  <path d="M16 22 C26 40 34 46 52 52 S120 66 150 74 S188 88 200 104" fill="none" stroke="url(#m1g)" stroke-width="3" stroke-linecap="round"/>
+  <g fill="currentColor" fill-opacity=".75"><circle cx="30" cy="40" r="2.6"/><circle cx="60" cy="54" r="2.6"/><circle cx="96" cy="61" r="2.6"/>
+  <circle cx="132" cy="69" r="2.6"/><circle cx="166" cy="80" r="2.6"/><circle cx="192" cy="96" r="2.6"/></g>
+  <text x="18" y="118" font-size="8" fill="currentColor" fill-opacity=".55">j</text><text x="4" y="20" font-size="8" fill="currentColor" fill-opacity=".55">V</text>
+</svg>"""
 
 
 def _ss():
@@ -32,6 +42,13 @@ def _on_catalog() -> None:
         return
     if a.get("type") == "open" and a.get("id") in persistence.workspace().devices:
         _open_device(a["id"])
+    elif a.get("type") == "manage":
+        _ss()["show_manage"] = True
+        ws = persistence.workspace()
+        refs = set()
+        for did in ws.devices:
+            refs |= ws.device_blob_refs(did)
+        persistence.request_blobs(persistence.missing_blobs(refs))     # para poder exportar sin esperas
     elif a.get("type") == "add":
         _ss()["show_new_device"] = True
 
@@ -102,8 +119,10 @@ def _backups() -> None:
 
 def render() -> None:
     ws = persistence.workspace()
-    st.html(f"""<div class="pml-hero"><div class="pml-eyebrow">Motor 1</div>
-      <h1>Motor 1 — Gestión e identificación de dispositivos PEMFC</h1><p>{INTRO}</p></div>""")
+    st.html(f"""<div class="m1-hero"><div class="m1-text">
+      <div class="m1-chip"><span class="m1-dot"></span>MOTOR 1 · IDENTIFICACIÓN Y CALIBRACIÓN</div>
+      <h1>Bienvenido al Motor 1</h1><p>{INTRO}</p></div>{MOTOR1_ART}</div>""")
+    st.html(device_admin.ADMIN_CSS)
     loaded = st.session_state.get("ws_loaded", False)
     devices = ws.list_devices(sort="recientes")
     if not loaded and not devices:
@@ -113,3 +132,5 @@ def render() -> None:
     _backups()
     if _ss().get("show_new_device"):
         _new_device_dialog()
+    elif _ss().get("show_manage"):
+        device_admin.manage_dialog()

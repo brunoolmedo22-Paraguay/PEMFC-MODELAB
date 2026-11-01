@@ -10,7 +10,7 @@ from .parameters import ORIGINS
 PROFILE_SCHEMA_ID = "pemfc-modellab/profile"
 PROFILE_SCHEMA_VERSION = "1.0.0"
 APP_NAME = "PEMFC ModelLab"
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.3.1"
 
 # Estados del perfil (excluyentes, en orden creciente de exigencia).
 STATUS_NOT_CONVERGED = "NO_CONVERGIDO"

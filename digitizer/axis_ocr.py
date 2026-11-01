@@ -22,7 +22,7 @@ from itertools import product
 
 import numpy as np
 
-from .detection import Panel, TickSet
+from .detection import LineSeg, Panel, TickSet
 from .ocr import OCRUnavailable, TextBox, find_text_boxes, recognize_boxes
 
 ST_RELIABLE = "CONFIABLE"
@@ -342,9 +342,52 @@ def _classify(axis: str, boxes: list[TextBox], panel: Panel, band) -> tuple[list
     return ticks, titles, mult
 
 
+OCR_MAX_SIDE_PX = 2200      # por encima, el OCR trabaja sobre una copia reducida (texto a escala de lectura)
+
+
 def recognize_axes(rgb: np.ndarray, panel: Panel, ticks: dict[str, TickSet | None],
                    background_rgb=(255, 255, 255)) -> dict[str, AxisRecognition]:
-    """Reconoce valores, escala, multiplicador y unidad de los ejes X e Y del panel."""
+    """Reconoce valores, escala, multiplicador y unidad de los ejes X e Y del panel.
+
+    En imágenes grandes (fotos o capturas de tablet de 3000–4000 px) el texto de los ejes es mucho mayor que
+    aquello para lo que están calibradas las bandas y umbrales: se reconoce sobre una copia reducida y después
+    las posiciones se reajustan a los ticks detectados a resolución COMPLETA (sin pérdida de precisión sub-píxel).
+    """
+    H, W = rgb.shape[:2]
+    if max(H, W) <= OCR_MAX_SIDE_PX:
+        return _recognize_axes_core(rgb, panel, ticks, background_rgb)
+    import cv2
+    s = OCR_MAX_SIDE_PX / max(H, W)
+    small = cv2.resize(rgb, (max(1, round(W * s)), max(1, round(H * s))), interpolation=cv2.INTER_AREA)
+    sc = lambda seg: LineSeg(seg.orientation, seg.pos * s, seg.start * s, seg.end * s, max(1.0, seg.thickness * s),  # noqa: E731
+                             seg.strength)
+    p2 = Panel(panel.x0 * s, panel.y0 * s, panel.x1 * s, panel.y1 * s, sc(panel.x_axis), sc(panel.y_axis),
+               panel.has_top, panel.has_right)
+    t2 = {k: (None if t is None else TickSet(t.axis, [v * s for v in t.positions], t.kind, t.regular,
+                                             None if t.spacing is None else t.spacing * s)) for k, t in ticks.items()}
+    out = _recognize_axes_core(small, p2, t2, background_rgb)
+    for axis, rec in out.items():
+        full = sorted(ticks[axis].positions) if ticks.get(axis) and ticks[axis].kind != "marco" else []
+        spacing = float(np.median(np.diff(full))) if len(full) > 1 else None
+        for l in rec.labels:
+            l.bbox_px = [v / s for v in l.bbox_px]
+            pos = l.position_px / s
+            if full:
+                near = min(full, key=lambda q: abs(q - pos))
+                if abs(near - pos) <= max(6.0, 0.3 * (spacing or 0)):
+                    pos, l.snapped_to_tick = near, True
+            l.position_px = float(pos)
+        if rec.title:
+            rec.title = {**rec.title, "bbox_px": [round(v / s, 1) for v in rec.title["bbox_px"]]}
+        if rec.slope is not None or rec.labels:
+            new = recompute(rec, spacing)
+            new.reasons = new.reasons + [f"OCR sobre copia reducida ×{s:.2f}; posiciones a resolución completa."]
+            out[axis] = new
+    return out
+
+
+def _recognize_axes_core(rgb: np.ndarray, panel: Panel, ticks: dict[str, TickSet | None],
+                         background_rgb=(255, 255, 255)) -> dict[str, AxisRecognition]:
     from .ocr import ENGINE_ID
     bg_luma = float(np.dot(background_rgb, [0.299, 0.587, 0.114]))
     out: dict[str, AxisRecognition] = {}

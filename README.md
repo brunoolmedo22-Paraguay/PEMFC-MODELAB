@@ -1,4 +1,6 @@
-# PEMFC ModelLab v0.3.0 — Gestión de dispositivos e identificación (Motor 1) + digitalizador inteligente
+# PEMFC ModelLab v0.3.1 — Gestión de dispositivos e identificación (Motor 1) + digitalizador inteligente
+
+Página principal con acceso al **Motor 1** y al **Motor 2** (en construcción) y pestaña «Modelo implementado» con las ecuaciones reales del código.
 
 Plataforma Streamlit para **incorporar, caracterizar, calibrar y administrar dispositivos PEMFC** y generar perfiles
 electroquímicos reproducibles, más un **digitalizador científico** que convierte figuras en tablas X–Y.

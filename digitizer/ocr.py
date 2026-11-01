@@ -123,6 +123,24 @@ def get_recognizer() -> TextRecognizer:
         return _REC
 
 
+_WARM = {"started": False}
+
+
+def warmup_async() -> None:
+    """Carga el modelo en segundo plano al arrancar el proceso (una vez): la primera imagen no espera por él."""
+    with _REC_LOCK:
+        if _WARM["started"] or _REC is not None:
+            return
+        _WARM["started"] = True
+
+    def _run():
+        try:
+            get_recognizer()
+        except OCRUnavailable:
+            pass
+    threading.Thread(target=_run, name="pml-ocr-warmup", daemon=True).start()
+
+
 def ocr_available() -> tuple[bool, str]:
     try:
         get_recognizer()
