@@ -1,12 +1,11 @@
-# PEMFC ModelLab v0.3.1 — Gestión de dispositivos e identificación (Motor 1) + digitalizador inteligente
+# PEMFC ModelLab v0.4.0 — Identificación y calibración (Motor 1), Laboratorio Virtual (Motor 2) y digitalizador científico
 
-Página principal con acceso al **Motor 1** y al **Motor 2** (en construcción) y pestaña «Modelo implementado» con las ecuaciones reales del código.
+Página principal con acceso al **Motor 1** (identificación y calibración) y al **Motor 2 — Laboratorio Virtual** (reproducción experimental, seguimiento de carga, alimentación de hidrógeno y optimización operacional sobre perfiles calibrados; ver `docs/MOTOR2_v0.4.0.md`), y pestaña «Modelo implementado» con las ecuaciones reales del código.
 
 Plataforma Streamlit para **incorporar, caracterizar, calibrar y administrar dispositivos PEMFC** y generar perfiles
 electroquímicos reproducibles, más un **digitalizador científico** que convierte figuras en tablas X–Y.
 
-> **Alcance.** Solo Motor 1 (identificación paramétrica); el Motor 2 (simulación operacional, H₂, costes) no está
-> implementado. La curva V–I es obligatoria. Un buen ajuste no es una validación experimental independiente.
+> **Alcance.** Motor 1 (identificación paramétrica) y Motor 2 cuasiestacionario (sin transitorios, BoP ni costes). La curva V–I es obligatoria. Un buen ajuste no es una validación experimental independiente.
 > Nunca se inventan valores de ejes, unidades, N_cells, A_active ni σ_V.
 
 **Dos flujos integrados visualmente y desacoplados en su lógica científica:**
@@ -28,7 +27,9 @@ electroquímicos reproducibles, más un **digitalizador científico** que convie
 **Documentación:**
 - `docs/GUIA_USUARIO.md`: guía de usuario.
 - `docs/ARQUITECTURA_v0.3.0.md`: arquitectura, persistencia, OCR, calibración geométrica, exportaciones y compatibilidad.
-- `docs/VERIFICACION_v0.3.0.md`: verificación y limitaciones.
+- `docs/MOTOR2_v0.4.0.md`: Motor 2 (definiciones, hipótesis, limitaciones, actualización desde v0.3.1).
+- `docs/VERIFICACION_v0.4.0.md`: verificación de la v0.4.0.
+- `docs/VERIFICACION_v0.3.0.md`: verificación y limitaciones (v0.3.0).
 - `CHANGELOG.md`: cambios por versión.
 
 | | |
@@ -88,7 +89,7 @@ algoritmo y limitaciones en `docs/DIGITALIZADOR.md`; verificación en `docs/VERI
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest -q                      # 200 pruebas (núcleo, digitalizador, OCR, espacio de trabajo, AppTest)
+python -m pytest -q                      # 228 pruebas (núcleo, Motor 2, digitalizador, OCR, espacio de trabajo, AppTest)
 python tools/reproduce_otekon.py         # baseline OTEKON (RMSE 0,001411370003309 V/celda)
 python tools/evaluate_digitizer.py       # exactitud del digitalizador frente a los truth sintéticos y la figura OTEKON
 ```

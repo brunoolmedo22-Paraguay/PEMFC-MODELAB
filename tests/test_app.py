@@ -30,12 +30,15 @@ def test_home_is_default_and_navigates_to_both_engines():
     assert "Bienvenido a PEMFC ModelLab" in html and "¿Qué deseas hacer hoy?" in html
     assert [t.label for t in at.tabs] == ["Acerca de ModelLab", "Motor 1", "Motor 2", "Modelo implementado"]
     assert len(at.get("latex")) >= 7                                       # ecuaciones del modelo implementado
-    button(at, "Ver la página del Motor 2 →").click().run()
-    assert at.session_state.route["view"] == "motor2"
+    button(at, "Acceder al Motor 2 →").click().run()
+    assert at.session_state.route["view"] == "motor2" and not at.exception
     html = " ".join(h.proto.body for h in at.get("html"))
-    assert "Motor 2 — Simulación y análisis operacional" in html and "no disponibles todavía" in html
-    button(at, "← Volver a la página principal").click().run()
-    assert at.session_state.route["view"] == "home"
+    assert "Motor 2 — Laboratorio Virtual" in html                      # v0.4.0: laboratorio real
+    assert any("perfil calibrado utilizable" in i.value for i in at.info)  # sin dispositivos: lo indica, no simula
+    button(at, "Ir al Motor 1").click().run()
+    assert at.session_state.route["view"] == "catalog" and not at.exception
+    at.session_state.route = {**at.session_state.route, "view": "home"}
+    at.run()
     button(at, "Acceder al Motor 1 →").click().run()
     assert at.session_state.route["view"] == "catalog" and not at.exception
 

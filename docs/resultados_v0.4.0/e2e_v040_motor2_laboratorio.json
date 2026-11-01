@@ -1,0 +1,41 @@
+{
+ "migrado": [
+  "Migrar como dispositivo nuevo"
+ ],
+ "lab": true,
+ "perfil_tarjeta": true,
+ "tarjetas_futuras": 2,
+ "carga_kpis": [
+  "Energía demandada",
+  "Energía no atendida"
+ ],
+ "carga_graficos": 2,
+ "dl_ZIP completo": [
+  "Seguimiento_de_carga_OTEKON_2024_referencia_reconstruida.zip",
+  428436
+ ],
+ "zip": [
+  "LEEME.txt",
+  "datos.csv",
+  "datos.xlsx",
+  "experimento.json",
+  "figuras/eficiencia.png",
+  "figuras/eficiencia.svg",
+  "figuras/seguimiento.png",
+  "figuras/seguimiento.svg",
+  "informe.pdf",
+  "perfil.json"
+ ],
+ "dl_Informe PDF": [
+  "Seguimiento_de_carga_OTEKON_2024_referencia_reconstruida.pdf",
+  134323
+ ],
+ "pdf_ok": true,
+ "repro": [
+  "Tipo de evaluación: REPRODUCCIÓN DE CALIBRACIÓN. Consistente con el Motor 1: métricas idénticas a las del perfil."
+ ],
+ "historial_tras_recarga": false,
+ "tablet_optimizacion": false,
+ "exc": 0,
+ "errs": []
+}

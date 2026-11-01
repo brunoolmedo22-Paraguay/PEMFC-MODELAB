@@ -66,7 +66,7 @@ def export_project(ws: Workspace, device_ids: list[str] | None = None) -> bytes:
         kind = key.split(":", 1)[0]
         if kind == "device" and key.split(":", 1)[1] not in ids:
             continue
-        if kind in ("dataset", "draft", "calibration", "export") and val.get("device_id") not in ids:
+        if kind in ("dataset", "draft", "calibration", "export", "experiment") and val.get("device_id") not in ids:
             continue
         if kind == "blob":
             continue
@@ -213,7 +213,8 @@ def import_project(ws: Workspace, data: bytes, strategy: dict[str, str] | None =
 
     # Copias independientes forzadas: id nuevo para el dispositivo y para TODOS sus registros.
     remap: dict[str, str] = {}
-    prefix = {"device": "dev", "dataset": "set", "draft": "drf", "calibration": "cal", "export": "out"}
+    prefix = {"device": "dev", "dataset": "set", "draft": "drf", "calibration": "cal", "export": "out",
+              "experiment": "exp"}
     for did in [d for d, s in strategy.items() if s == "copia"]:
         for key, val in records.items():
             kind, rid = key.split(":", 1)
@@ -251,7 +252,7 @@ def import_project(ws: Workspace, data: bytes, strategy: dict[str, str] | None =
             if canonical_sha256(existing) == canonical_sha256(val):
                 rep.skipped_identical.append(key)
                 continue
-            if kind in ("dataset", "calibration", "export"):
+            if kind in ("dataset", "calibration", "export", "experiment"):
                 rep.rejected.append(f"{key}: ya existe con contenido distinto (registro inmutable); no se importa.")
                 continue
             nid = new_id(prefix[kind])                             # conflicto no resuelto explícitamente → copia
@@ -276,6 +277,8 @@ def import_project(ws: Workspace, data: bytes, strategy: dict[str, str] | None =
         for attr in ("device_id", "draft_id"):
             if getattr(obj, attr, None) in remap:
                 setattr(obj, attr, remap[getattr(obj, attr)])
+                if kind == "experiment":
+                    obj.seal()                                   # referencia remapeada: nueva huella coherente
     replaced = [d for d, s in strategy.items() if s == "reemplazar"]
     rep.messages.append(f"Paquete v{manifest.get('app_version')} ({manifest.get('created_utc')}): "
                         f"{len(rep.added)} registro(s) añadidos, {len(rep.skipped_identical)} idénticos omitidos, "

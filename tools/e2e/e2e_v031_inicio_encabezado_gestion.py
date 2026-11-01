@@ -33,9 +33,9 @@ async def main():
             R["toque_alcance"] = (await pg.evaluate("location.search")).find("about") >= 0
             await tap(pg, ".tb-brand"); await idle(pg, 2000)
             await tap(pg, ".eng-card", "Motor 2"); await idle(pg, 2000)
-            t = await pg.inner_text("body"); R["motor2"] = "Estamos preparando el entorno de simulación" in t
+            t = await pg.inner_text("body"); R["motor2"] = "Motor 2 — Laboratorio Virtual" in t  # v0.4.0: laboratorio real
             await pg.screenshot(path=S + "02_motor2_tablet.png", full_page=True)
-            await pg.get_by_role("button", name="← Volver a la página principal").tap(); await idle(pg, 2000)
+            await tap(pg, ".tb-brand"); await idle(pg, 2000)  # v0.4.0: la página del Motor 2 ya no es provisional
             R["regreso_inicio"] = "¿qué deseas hacer hoy?" in (await pg.inner_text("body")).lower()
             await pg.get_by_role("tab", name="Modelo implementado").tap(); await idle(pg, 1500)
             await pg.screenshot(path=S + "03_modelo_implementado.png", full_page=True)

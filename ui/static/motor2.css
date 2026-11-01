@@ -1,0 +1,38 @@
+/* Motor 2 — Laboratorio Virtual. Mismos tokens visuales que el Motor 1 (acento teal, tarjetas, sombras suaves). */
+.m2x { --acc: var(--st-primary-color, #0E7C86); --mut: color-mix(in srgb, currentColor 62%, transparent);
+       --brd: color-mix(in srgb, currentColor 14%, transparent); --card: color-mix(in srgb, currentColor 3%, transparent); }
+.m2x-hero { display:flex; align-items:center; justify-content:space-between; gap:1.6rem; padding:1.4rem 1.6rem;
+  border:1px solid var(--brd); border-radius:18px; margin:.2rem 0 1rem 0;
+  background: radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--acc) 16%, transparent), transparent 60%),
+              linear-gradient(180deg, color-mix(in srgb, var(--acc) 5%, transparent), transparent); }
+.m2x-hero h1 { font-size:1.9rem; line-height:1.15; margin:.35rem 0 .4rem 0; letter-spacing:-.015em; }
+.m2x-hero p { margin:0; max-width:820px; opacity:.84; font-size:1.0rem; }
+.m2x-chip { display:inline-flex; align-items:center; gap:.45rem; font-size:.72rem; font-weight:700; letter-spacing:.09em;
+  color:var(--acc); background:color-mix(in srgb, var(--acc) 11%, transparent); padding:.28rem .6rem; border-radius:999px; }
+.m2x-chip i { width:.5rem; height:.5rem; border-radius:50%; background:var(--acc); display:inline-block; }
+.m2x-art { flex:0 0 170px; opacity:.95 }
+.m2x-prof { border:1px solid var(--brd); border-radius:14px; padding:.9rem 1.1rem; background:var(--card); }
+.m2x-prof .row { display:flex; flex-wrap:wrap; gap:.45rem 1.4rem; margin-top:.45rem; font-size:.86rem; }
+.m2x-prof .k { color:var(--mut); font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; display:block; }
+.m2x-prof b { font-weight:650; }
+.m2x-badge { display:inline-block; font-size:.72rem; font-weight:700; padding:.18rem .55rem; border-radius:999px;
+  border:1px solid currentColor; letter-spacing:.03em; }
+.m2x-ok { color:#0f8b6d } .m2x-warn { color:#b7791f } .m2x-bad { color:#c53030 } .m2x-info { color:var(--acc) }
+.m2x-card { position:relative; border-radius:16px; padding:1.05rem 1.1rem .7rem 1.1rem; min-height:168px;
+  border:1px solid var(--brd); background:var(--card); overflow:hidden; }
+.m2x-card:before { content:""; position:absolute; inset:0 0 auto 0; height:4px; background:var(--c, var(--acc)); }
+.m2x-card .num { font-family: ui-monospace, Menlo, Consolas, monospace; font-size:.74rem; color:var(--mut); }
+.m2x-card h3 { font-size:1.08rem; margin:.25rem 0 .35rem 0; display:flex; gap:.55rem; align-items:center; }
+.m2x-card h3 svg { flex:0 0 26px; color:var(--c, var(--acc)); }
+.m2x-card p { font-size:.86rem; opacity:.82; margin:0; line-height:1.38; }
+.m2x-card.future { opacity:.62; border-style:dashed; }
+.m2x-card.future:before { background:repeating-linear-gradient(90deg, var(--mut) 0 8px, transparent 8px 14px); }
+.m2x-soon { position:absolute; top:.8rem; right:.9rem; font-size:.66rem; font-weight:700; letter-spacing:.08em;
+  color:var(--mut); border:1px dashed var(--mut); border-radius:999px; padding:.12rem .5rem; }
+.m2x-bench-head { display:flex; align-items:center; gap:.8rem; margin:.3rem 0 .6rem 0; }
+.m2x-bench-head svg { width:38px; height:38px; color:var(--c, var(--acc)); }
+.m2x-bench-head h2 { margin:0; font-size:1.45rem; }
+.m2x-bench-head .num { font-family: ui-monospace, Menlo, Consolas, monospace; color:var(--mut); font-size:.8rem; }
+.m2x-validity { border-radius:12px; padding:.55rem .9rem; border:1px solid var(--brd); margin:.3rem 0 .6rem 0; font-size:.9rem; }
+.m2x-sec { font-weight:700; font-size:.78rem; letter-spacing:.08em; text-transform:uppercase; color:var(--acc); margin:1rem 0 .35rem 0; }
+@media (max-width: 900px) { .m2x-art { display:none } .m2x-hero h1 { font-size:1.55rem } }

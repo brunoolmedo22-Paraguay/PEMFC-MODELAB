@@ -1,5 +1,52 @@
 # Changelog
 
+## v0.4.0 — Motor 2: Laboratorio Virtual de Experimentación Operacional (2026-11)
+
+El Motor 2 pasa de página provisional a laboratorio funcional sobre los perfiles calibrados del Motor 1. **Núcleo
+numérico intacto:**
+- `pemfc_core/model.py` e `identification/` no cambian;
+- OTEKON da Δ RMSE = 0,0;
+- el Motor 2 **no añade ecuaciones electroquímicas**.
+
+### Nuevo
+- **`simulation/`** (sin dependencias de interfaz):
+  - `stack.py`: modelo de stack desde el perfil, envolvente admisible, capacidad, inversión P→j, H₂ faradaico y eficiencias;
+  - `timeseries.py`: perfiles temporales (validación, unidades, generadores, remuestreo);
+  - `benches.py`: las 4 bancadas;
+  - `runner.py`: ejecución desde una configuración serializable;
+  - `report.py`: CSV, XLSX, JSON, PNG/SVG, informe PDF y ZIP.
+- **Bancadas funcionales:**
+  - 01 Reproducción experimental, con métricas idénticas a las del Motor 1;
+  - 02 Seguimiento de carga, en modos ideal y restringido, con déficit, margen, eventos y rampas solo si están documentadas;
+  - 03 Alimentación de hidrógeno, que distingue alimentado de consumido y cierra el problema con una política;
+  - 04 Optimización operacional, con 5 objetivos y frontera de Pareto.
+- **Bancadas 05 y 06:** solo previstas.
+- **Experimentos persistentes e inmutables** (tipo `experiment` del espacio de trabajo, sellado con SHA‑256). Incluye:
+  - historial, duplicación de configuración y comparación;
+  - estudio completo con omisiones justificadas;
+  - exportación individual y conjunta.
+- **Interfaz «Motor 2 — Laboratorio Virtual»** (`ui/motor2_view.py`, `ui/static/motor2.css`):
+  - selector de dispositivo y de perfil, con resumen del perfil;
+  - tarjetas de las bancadas;
+  - hipótesis consultables desde cada bancada;
+  - gráficos temporales sincronizados con los eventos sombreados.
+- **Digitalizador generalizado:** modo `series` para curvas tiempo–magnitud, usado como entrada de las bancadas 02 y 03. Los modos del Motor 1 y el autónomo no cambian.
+- **Página principal:**
+  - «Acerca de ModelLab» reescrita con los 13 puntos de transparencia científica;
+  - pestaña Motor 2 actualizada;
+  - tarjeta del Motor 2 disponible;
+  - subtítulo exacto de la especificación v0.3.1.
+- **Documentación:** `docs/MOTOR2_v0.4.0.md` (hipótesis, definiciones, limitaciones, actualización) y `docs/VERIFICACION_v0.4.0.md`.
+
+### Cambios en archivos existentes
+- `workspace/model.py`: tipo `Experiment` (inmutable y sellado), `add_experiment` y `device_experiments`. Los experimentos se incluyen en el paquete del dispositivo y en su borrado.
+- `workspace/project_io.py`: importación y exportación de experimentos; resellado al remapear el dispositivo.
+- `ui/digitizer_view.py`: modo `series` y `render_series_entry`.
+- `ui/home_view.py`, `ui/about_view.py`: textos actualizados (ya no dicen «Motor 2 no implementado» ni «sin OCR»).
+- `pemfc_core/schemas.py`: `APP_VERSION = "0.4.0"` (única línea).
+- `requirements.txt`: **`reportlab==4.4.10`** (informe PDF).
+- **Contrato:** el resumen de `Workspace.delete_device` incluye `experiments`.
+
 ## v0.3.1 — Página principal, gestión de dispositivos y correcciones de tablet (2026-11)
 
 Núcleo numérico intacto: `pemfc_core/model.py` e `identification/` sin cambios y OTEKON con Δ RMSE = 0,0.

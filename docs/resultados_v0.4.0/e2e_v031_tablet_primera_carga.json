@@ -1,0 +1,16 @@
+{
+ "carga_unica_1": {
+  "lienzo_listo": true,
+  "segundos": 3.5,
+  "ejes_confiables": 2,
+  "error_visible": false,
+  "errs": []
+ },
+ "carga_unica_2": {
+  "lienzo_listo": true,
+  "segundos": 3.0,
+  "ejes_confiables": 2,
+  "error_visible": false,
+  "errs": []
+ }
+}

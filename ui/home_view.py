@@ -17,11 +17,11 @@ CARDS = [
      "description": "Registra tus dispositivos PEMFC e identifica sus parámetros experimentales para incorporarlos a un "
                     "modelo digital calibrado.",
      "action": "Acceder al Motor 1"},
-    {"kind": "simulate", "icon": "simulate", "view": "motor2", "available": False, "eyebrow": "Motor 2",
+    {"kind": "simulate", "icon": "simulate", "view": "motor2", "available": True, "eyebrow": "Motor 2",
      "title": "Simulación y análisis operacional",
      "description": "Integra tus dispositivos registrados en un entorno de simulación para estudiar y visualizar su "
                     "comportamiento bajo diferentes condiciones operativas.",
-     "action": "Explorar Motor 2"},
+     "action": "Acceder al Motor 2"},
 ]
 
 
@@ -37,8 +37,8 @@ def render() -> None:
         fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M15 10v28M21 10v28M27 10v28M33 10v28" stroke="currentColor"
         stroke-width="1.8" stroke-opacity=".6"/><path d="M24 4v6M24 38v6" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></div>
       <h1>Bienvenido a PEMFC ModelLab</h1>
-      <p>Una plataforma científica para identificar, calibrar y —en desarrollo— simular sistemas de celdas de combustible de
-      membrana de intercambio protónico (PEMFC), con trazabilidad completa desde el dato experimental hasta el perfil.</p>
+      <p>Una plataforma científica para la identificación, calibración y simulación de sistemas de celdas de combustible de
+      membrana de intercambio protónico.</p>
       <div class="home-q">¿Qué deseas hacer hoy?</div></div>""")
     shell.component("engines")(key="pml_engines", data={"cards": CARDS}, on_action_change=_on_engine)
     st.write("")
@@ -55,19 +55,34 @@ def render() -> None:
 
 def _about() -> None:
     st.markdown("""
-**PEMFC ModelLab** es un entorno de trabajo para convertir mediciones de celdas y stacks PEMFC en **modelos
-electroquímicos calibrados, reproducibles y auditables**.
+**PEMFC ModelLab** convierte mediciones de celdas y stacks PEMFC en **modelos electroquímicos calibrados, reproducibles y
+auditables**, y permite experimentar computacionalmente con ellos.
 
-- **Enfoque modular.** Dos motores con responsabilidades separadas: el **Motor 1** identifica y calibra a partir de datos
-  experimentales; el **Motor 2** (en desarrollo) usará esos perfiles para simular la operación. Se comunican mediante un
-  **contrato de perfil** versionado (JSON), no mediante estado compartido.
-- **Trazabilidad experimental.** Cada curva conserva su origen (archivo, figura digitalizada con su auditoría, condiciones de
-  medición), cada calibración guarda la configuración exacta y cada perfil incluye huellas SHA‑256 y la reproducción de sus
-  curvas.
-- **Reproducibilidad.** Las calibraciones son inmutables; una nueva ejecución crea una calibración nueva. Los resultados se
-  pueden recalcular y comparar, y los paquetes exportados permiten reconstruir un dispositivo en otro equipo.
-- **Honestidad científica.** Un buen ajuste no es una validación: el estado «validado» solo aparece con datos
-  independientes. Nada se inventa (geometría, unidades, valores de ejes ni incertidumbres).
+- **Motor 1 — Identificación y calibración.** Registra dispositivos, incorpora curvas V–I (CSV o digitalizadas), identifica
+  los parámetros del modelo por mínimos cuadrados y produce **perfiles calibrados** versionados (JSON) con su dominio de
+  validez, su estado y la reproducción de sus curvas.
+- **Motor 2 — Laboratorio virtual.** Usa esos perfiles **sin modificar el modelo**: reproduce los experimentos de calibración,
+  simula seguimiento de carga, estudia la alimentación de hidrógeno y busca puntos de operación óptimos, con hipótesis,
+  alertas y exportación.
+- **Modelo electroquímico.** V_celda = E_Nernst − V_act − V_óhm − V_conc (detalle completo en «Modelo implementado»).
+- **Parámetros identificados experimentalmente.** Los marcados como libres en la configuración (p. ej. ξ₁–ξ₄, resistencia de
+  membrana y su dependencia térmica, coeficientes de concentración); los demás son fijados o asumidos y su origen se declara.
+- **Variables calculadas directamente por el modelo:** tensión de celda y de stack, corriente (I = j·A), potencia
+  (P = N·V·I), pérdidas por activación, óhmicas y de concentración.
+- **Resultados que dependen de hipótesis adicionales:** consumo de H₂ (faradaico, N·I/2F: sin purgas ni fugas), eficiencia
+  (respecto al PCI/PCS elegido, sin auxiliares), utilización de combustible (requiere el caudal alimentado y una política),
+  límites de rampa, corriente o potencia (solo si el usuario los documenta).
+- **Simulación cuasiestacionaria.** Cada instante de un perfil temporal se evalúa con la curva de polarización estacionaria:
+  la respuesta se ajusta instantáneamente a la demanda dentro de la capacidad disponible. No es una simulación dinámica.
+- **Fenómenos no representados.** Transitorios electroquímicos (doble capa), dinámica de gases y de presión, térmica,
+  gestión de agua e hidratación de membrana, degradación, auxiliares (compresor, humidificador, refrigeración), electrónica
+  de potencia y balance de planta.
+- **Calibración frente a validación.** Reproducir las curvas usadas en el ajuste mide la calidad del ajuste, no la capacidad
+  predictiva. Solo curvas no usadas en el ajuste (rol «validación») permiten una validación independiente.
+- **Extrapolación.** Fuera del dominio calibrado (corriente, temperatura, presión) el modelo se evalúa por extrapolación: los
+  resultados se marcan como tales y deben interpretarse con cautela, sin atribuirles validez experimental.
+- **Trazabilidad y honestidad.** Calibraciones y experimentos son inmutables y sellados (SHA‑256); nada se inventa (geometría,
+  unidades, valores de ejes, incertidumbres, límites operacionales). Si falta información, la aplicación lo indica.
 """)
 
 
@@ -98,17 +113,23 @@ def _motor1() -> None:
 
 def _motor2() -> None:
     st.markdown("""
-El **Motor 2** será el entorno de simulación y análisis operacional. **Todavía no está implementado.**
+El **Motor 2 — Laboratorio Virtual** somete un dispositivo calibrado a experimentos computacionales con el modelo y los
+parámetros de su perfil (sin ecuaciones nuevas). Disponible en esta versión:
 
-**Objetivos previstos**
-- Incorporar como modelos los dispositivos ya identificados en el Motor 1 (a través de su perfil).
-- Definir condiciones operativas (temperatura, presiones, oxidante, demanda) y estudiar la respuesta del sistema.
-- Analizar curvas de operación, eficiencia y sensibilidad, respetando el dominio en el que cada perfil fue identificado.
+- **01 Reproducción experimental:** curvas V–I y P–I, residuos, RMSE, MAE, sesgo y error máximo, idénticos al Motor 1;
+  distingue reproducción de calibración y validación independiente.
+- **02 Seguimiento de carga:** perfil temporal (generadores, tabla, CSV/Excel o imagen digitalizada); potencia demandada,
+  disponible, entregada, déficit y margen; tensión, corriente, H₂ y eficiencia; eventos y restricciones (rampa solo si se
+  documenta); modos ideal y restringido.
+- **03 Alimentación de hidrógeno:** caudal como entrada y política de operación (corriente, potencia, utilización o máxima
+  potencia con u_máx); H₂ alimentado frente a consumido y operación limitada por combustible.
+- **04 Optimización operacional:** máxima potencia, máxima eficiencia, mínimo consumo específico, potencia objetivo y frontera
+  de Pareto, siempre dentro del dominio admisible.
+- **Estudio completo, historial, duplicación, comparación** y exportación (CSV, Excel, JSON, PNG/SVG, PDF y ZIP).
 
-Mientras tanto, los perfiles del Motor 1 ya declaran su dominio de validez, su estado de validación y los parámetros que
-el Motor 2 necesitará.
+**Previsto:** sensibilidad y comparación de escenarios; mapa operacional.
 """)
-    if st.button("Ver la página del Motor 2 →", key="home_go_m2"):
+    if st.button("Acceder al Motor 2 →", key="home_go_m2", type="primary"):
         shell.go("motor2")
         st.rerun()
 

@@ -339,7 +339,7 @@ def test_delete_device_is_deliberate_complete_and_persisted(otekon):
     with pytest.raises(WorkspaceError, match="Confirmación incorrecta"):
         ws.delete_device(d.id, "stack a")
     s = ws.delete_device(d.id, "Stack A")
-    assert s == {"device": "Stack A", "datasets": 1, "drafts": 1, "calibrations": 1, "exports": 1, "blobs": 0}
+    assert s == {"device": "Stack A", "datasets": 1, "drafts": 1, "calibrations": 1, "exports": 1, "experiments": 0, "blobs": 0}
     assert d.id not in ws.devices and not ws.device_calibrations(d.id) and cal.id not in ws.calibrations
     assert len(ws.blobs) == 1                                          # binario compartido conservado
     ops = ws.pending()

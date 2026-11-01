@@ -235,6 +235,30 @@ class ProfileExport:
 
 
 @dataclass
+class Experiment:
+    """Ejecución de una bancada del Motor 2 (inmutable, sellada). Referencia la calibración usada."""
+    id: str
+    device_id: str
+    calibration_id: str
+    profile_id: str
+    bench: str
+    name: str
+    result: dict
+    app_version: str = ""
+    model: dict = field(default_factory=dict)
+    study_id: str | None = None
+    duplicated_from: str | None = None
+    created_utc: str = field(default_factory=now_utc)
+    content_sha256: str = ""
+
+    def seal(self) -> "Experiment":
+        d = asdict(self)
+        d.pop("content_sha256", None)
+        self.content_sha256 = canonical_sha256(jsonable(d))
+        return self
+
+
+@dataclass
 class Blob:
     sha256: str
     name: str
@@ -246,8 +270,9 @@ class Blob:
         return b64decode(self.data_b64)
 
 
-_TYPES = {"device": Device, "dataset": Dataset, "draft": Draft, "calibration": Calibration, "export": ProfileExport}
-_IMMUTABLE = {"dataset", "calibration", "export", "blob"}
+_TYPES = {"device": Device, "dataset": Dataset, "draft": Draft, "calibration": Calibration, "export": ProfileExport,
+          "experiment": Experiment}
+_IMMUTABLE = {"dataset", "calibration", "export", "blob", "experiment"}
 
 
 def _from(cls, d: dict):
@@ -265,6 +290,7 @@ class Workspace:
         self.drafts: dict[str, Draft] = {}
         self.calibrations: dict[str, Calibration] = {}
         self.exports: dict[str, ProfileExport] = {}
+        self.experiments: dict[str, Experiment] = {}
         self.blobs: dict[str, Blob] = {}
         self.dirty: set[str] = set()
         self.deleted: set[str] = set()          # claves a borrar también en el almacenamiento persistente
@@ -273,7 +299,7 @@ class Workspace:
     # ---------------------------------------------------------------- utilidades
     def _store(self, kind: str):
         return {"device": self.devices, "dataset": self.datasets, "draft": self.drafts,
-                "calibration": self.calibrations, "export": self.exports}[kind]
+                "calibration": self.calibrations, "export": self.exports, "experiment": self.experiments}[kind]
 
     def _touch(self, kind: str, obj) -> None:
         if hasattr(obj, "updated_utc"):
@@ -432,7 +458,7 @@ class Workspace:
     def device_keys(self, device_id: str) -> list[str]:
         """Todas las claves de registros que pertenecen al dispositivo (sin binarios)."""
         keys = [f"device:{device_id}"]
-        for kind in ("dataset", "draft", "calibration", "export"):
+        for kind in ("dataset", "draft", "calibration", "export", "experiment"):
             keys += [f"{kind}:{rid}" for rid, obj in self._store(kind).items() if obj.device_id == device_id]
         return keys
 
@@ -462,7 +488,8 @@ class Workspace:
             for obj in self._store(kind).values():
                 if obj.device_id != device_id:
                     others |= set(obj.originals.values())
-        summary = {"device": d.name, "datasets": 0, "drafts": 0, "calibrations": 0, "exports": 0, "blobs": 0}
+        summary = {"device": d.name, "datasets": 0, "drafts": 0, "calibrations": 0, "exports": 0, "experiments": 0,
+                   "blobs": 0}
         for key in keys:
             kind, rid = key.split(":", 1)
             self._store(kind).pop(rid, None)
@@ -477,6 +504,27 @@ class Workspace:
                 self.dirty.discard(f"blob:{sha}")
                 self.deleted.add(f"blob:{sha}")
         return summary
+
+    # ---------------------------------------------------------------- Motor 2: experimentos
+    def add_experiment(self, device_id: str, calibration_id: str, bench: str, name: str, result: dict,
+                       model: dict | None = None, study_id: str | None = None,
+                       duplicated_from: str | None = None) -> Experiment:
+        from pemfc_core.schemas import APP_VERSION
+        if device_id not in self.devices:
+            raise WorkspaceError("Dispositivo inexistente.")
+        cal = self.calibrations.get(calibration_id)
+        if cal is None or cal.device_id != device_id:
+            raise WorkspaceError("La calibración no pertenece al dispositivo.")
+        name = str(name).strip() or f"{bench} {now_utc()}"
+        ex = Experiment(new_id("exp"), device_id, calibration_id, cal.profile_id, bench, name, jsonable(result),
+                        APP_VERSION, model or {}, study_id, duplicated_from).seal()
+        self.experiments[ex.id] = ex
+        self.dirty.add(f"experiment:{ex.id}")
+        return ex
+
+    def device_experiments(self, device_id: str) -> list[Experiment]:
+        return sorted((e for e in self.experiments.values() if e.device_id == device_id),
+                      key=lambda e: e.created_utc, reverse=True)
 
     # ---------------------------------------------------------------- consultas
     def device_calibrations(self, device_id: str) -> list[Calibration]:
@@ -593,6 +641,10 @@ class Workspace:
             expect = obj.content_sha256
             if expect and Calibration(**{f.name: getattr(obj, f.name) for f in fields(Calibration)}).seal().content_sha256 != expect:
                 raise WorkspaceError(f"Calibración {rid} alterada (huella de contenido distinta).")
+        if kind == "experiment":
+            expect = obj.content_sha256
+            if not expect or _from(Experiment, asdict(obj)).seal().content_sha256 != expect:
+                raise WorkspaceError(f"Experimento {rid} alterado (huella de contenido distinta).")
         if kind == "dataset" and obj.content_sha256:
             if canonical_sha256({"curves": obj.curves, "originals": obj.originals}) != obj.content_sha256:
                 raise WorkspaceError(f"Conjunto de datos {rid} alterado (huella de contenido distinta).")
@@ -612,7 +664,7 @@ class Workspace:
 
     def all_records(self) -> dict[str, dict]:
         out = {}
-        for kind in ("device", "dataset", "draft", "calibration", "export"):
+        for kind in ("device", "dataset", "draft", "calibration", "export", "experiment"):
             for rid in self._store(kind):
                 out[f"{kind}:{rid}"] = self.record_value(f"{kind}:{rid}")
         for sha in self.blobs:

@@ -557,7 +557,7 @@ def _recognition_panel(d: DigitizationDraft) -> None:
 
 
 def _units_panel(d: DigitizationDraft) -> None:
-    standalone = _ss().get("dz_mode") == "standalone"
+    standalone = _ss().get("dz_mode") in ("standalone", "series")
     if standalone:
         c1, c2 = st.columns(2)
         c1.text_input("Unidad X", key="dz_xu_text", on_change=_on_free_units, placeholder="p. ej. A/cm²",
@@ -989,7 +989,25 @@ def render_body(mode: str = "motor1") -> None:
         with st.expander(f"Avisos de digitalización ({len(warns)})", expanded=len(warns) <= 3):
             st.warning("\n".join(f"- {w}" for w in warns))
 
-    if mode == "standalone":
+    if mode == "series":
+        ready, why = d.physical_ready()
+        pts = [p for p in d.sorted_points() if p.include]
+        c1, c2 = st.columns([3, 1.4])
+        c1.caption("Curva tiempo–magnitud para el Motor 2: el eje X debe ser el tiempo y el eje Y la magnitud del "
+                   "perfil (potencia o caudal de H₂). Las unidades se confirman al usarla en la bancada."
+                   + ("" if ready else " Pendiente: " + " ".join(why)))
+        if c2.button("Usar esta curva como perfil temporal", type="primary", key="dz_use_series",
+                     disabled=not (ready and len(pts) >= 2), width="stretch"):
+            cal = d.calibration()[0]
+            x, y = cal.to_physical([p.px for p in pts], [p.py for p in pts])
+            _ss()["dz_series_result"] = {"x": [float(v) for v in x], "y": [float(v) for v in y],
+                                         "x_unit": d.x_unit_text, "y_unit": d.y_unit_text, "image": d.image.filename,
+                                         "sha256": d.image.sha256, "n": len(pts),
+                                         "axis_status": {k: v.status for k, v in d.axis_recognition.items()},
+                                         "axis_confirmed": dict(d.axis_confirmed)}
+            _ss()["dz_open"] = False
+            st.rerun()
+    if mode in ("standalone", "series"):
         t1, t2, t3, t4 = st.tabs(["Exportar datos", "Tabla de puntos", "Vista previa física", "Auditoría"])
         with t1:
             _export_tab(d)
@@ -1041,6 +1059,24 @@ def render_body(mode: str = "motor1") -> None:
         if not any(p.include for p in d.points):
             missing.append("puntos incluidos")
         st.caption("Confirmar bloqueado: falta " + ", ".join(missing) + ".")
+
+
+@st.dialog("Digitalizar perfil temporal desde imagen", width="large", on_dismiss=_on_dismiss)
+def _series_dialog() -> None:
+    render_body("series")
+
+
+def render_series_entry(context: str) -> dict | None:
+    """Entrada del Motor 2: digitaliza una curva tiempo–magnitud. Devuelve el resultado una sola vez."""
+    use_context(context)
+    ss = _ss()
+    d = _draft()
+    if d is not None:
+        st.caption(f"Digitalización en curso: **{d.image.filename}** ({len(d.points)} puntos). Al abrir se restaura.")
+    st.button("Abrir digitalizador", type="primary", key=f"dz_open_series_{context}", on_click=_open)
+    if ss.get("dz_open"):
+        _series_dialog()
+    return ss.pop("dz_series_result", None)
 
 
 def render_entry() -> None:

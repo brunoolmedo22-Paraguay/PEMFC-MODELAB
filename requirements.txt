@@ -12,3 +12,5 @@ opencv-python-headless==4.13.0.92
 # v0.3.0: OCR local de ejes (modelo PP-OCRv4 en ONNX incluido en digitizer/models) y exportación XLSX
 onnxruntime==1.24.4
 openpyxl==3.1.5
+# v0.4.0: informe técnico PDF del Motor 2
+reportlab==4.4.10

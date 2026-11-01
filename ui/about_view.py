@@ -16,10 +16,11 @@ def render() -> None:
     st.subheader("Qué no hace")
     st.markdown(
         "- **No crea perfiles a partir de un datasheet sin curva.** La referencia de datasheet es solo documental.\n"
-        "- **No implementa el Motor 2** (demanda temporal, despacho, consumo de H₂, costes, BOP).\n"
-        "- **Digitaliza imágenes de curvas** (v0.2.0) de forma asistida y local: la detección automática trabaja en "
-        "píxeles y los valores de los ejes los confirma el usuario (sin OCR). Una curva digitalizada tiene calidad "
-        "«digitalizado» y no constituye validación experimental independiente.\n"
+        "- **El Motor 2 es cuasiestacionario**: no simula transitorios, dinámica de gases, térmica, auxiliares (BoP), "
+        "despacho económico ni costes.\n"
+        "- **Digitaliza imágenes de curvas** de forma local: OCR de los ejes verificado geométricamente, con confirmación "
+        "del usuario cuando la evidencia no basta. Una curva digitalizada tiene calidad «digitalizado» y no constituye "
+        "validación experimental independiente.\n"
         "- **No ajusta potencia ni eficiencia**, porque derivan de la misma tensión.\n"
         "- No representa transitorios, envejecimiento, gestión de agua ni condiciones no medidas.")
     st.subheader("Estados de un perfil")

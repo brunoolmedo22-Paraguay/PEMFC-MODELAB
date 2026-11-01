@@ -1,0 +1,45 @@
+{
+ "inicio": true,
+ "toque_digitalizador": true,
+ "toque_alcance": true,
+ "motor2": true,
+ "regreso_inicio": true,
+ "n_ecuaciones": 7,
+ "motor1_encabezado": true,
+ "zip": [
+  "Stack_exportable__dev-cf4a885945.pmldevice.zip",
+  42545
+ ],
+ "zip_contenido": [
+  "blobs/0852964ef4992c1d417b41284df094ef2d672c615837ae9843ffd154ae9f1ae3",
+  "blobs/3162b569db52a00c0fde4cf1c9879d3d6c5c8b808ff9a7f65473144a3ec6e63b",
+  "blobs/dec10399934677d131322414d2d2596968c403d83f1ea8e79dda1de7d5b65d9b",
+  "blobs/f8714c801892f8901991cf7f5561b41a5f83c17f6269b7cf0c360ca91ad644f0",
+  "manifest.json/",
+  "records/calibration",
+  "records/dataset",
+  "records/device",
+  "records/draft"
+ ],
+ "manifest": {
+  "schema": "pemfc-modellab/workspace",
+  "schema_version": "1.0.0",
+  "app_version": "0.4.0",
+  "device_ids": [
+   "dev-cf4a885945"
+  ]
+ },
+ "boton_bloqueado_sin_nombre": true,
+ "msg_eliminado": [
+  "Dispositivo «Stack exportable» eliminado: 1 calibración(es), 1 identificación(es), 1 conjunto(s) de datos y 0 registro(s) de exportación. El catálogo ya está actualizado."
+ ],
+ "tras_recarga_tarjetas": 0,
+ "msg_importado": [
+  "Paquete v0.4.0 (2026-11-01T20:00:13.904179Z): 4 registro(s) añadidos, 0 idénticos omitidos, 0 dispositivo(s)/borrador(es) como copia, 0 reemplazado(s), 0 rechazados."
+ ],
+ "tras_importar_y_recargar": [
+  "Stack exportable | Lab PEM | Perfil ajustado | CELDAS | — | ÁREA ACTIVA | — | CALIBRACIONES | 1 | BORRADORES | 1 | Perfil activo | ninguno | dev-cf4a885945 | Mo"
+ ],
+ "exc": 0,
+ "errs": []
+}
