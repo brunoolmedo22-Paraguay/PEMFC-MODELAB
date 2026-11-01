@@ -1,0 +1,49 @@
+name: "Agent development task"
+description: "Scoped, reviewable implementation request. Creating this Issue never starts an AI agent."
+title: "[AGENT] "
+labels: ["agent-task"]
+body:
+  - type: markdown
+    attributes:
+      value: "This is a specification only. Agent execution is disabled until separately approved and configured. No paid API use is authorized."
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What must change and why?
+      placeholder: "Describe the desired result."
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: In scope / out of scope
+      description: Specify boundaries, affected modules, and prohibited changes.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Observable behaviors that must be verified.
+    validations:
+      required: true
+  - type: textarea
+    id: science
+    attributes:
+      label: Scientific and data integrity constraints
+      description: Equations, units, numerical baselines, persistence, profiles, backward compatibility.
+  - type: textarea
+    id: tests
+    attributes:
+      label: Required tests and evidence
+      description: Include automated and tablet/browser checks as appropriate.
+  - type: dropdown
+    id: execution
+    attributes:
+      label: Agent execution authorization
+      description: Informational only; this field does not trigger any workflow.
+      options:
+        - "NOT AUTHORIZED — specification only"
+    validations:
+      required: true
