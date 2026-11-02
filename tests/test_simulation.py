@@ -150,7 +150,7 @@ def test_generators_and_units():
     assert v[0] == 0 and v[-1] == 10
     t, v = ts.periodic(5, 2, 10, 30, "cuadrada")
     assert max(v) == 7 and min(v) == 3
-    assert set(BENCHES) == {"reproduccion", "carga", "hidrogeno", "optimizacion"} and len(OBJECTIVES) == 5
+    assert set(BENCHES) == {"reproduccion", "carga", "hidrogeno", "optimizacion", "sensibilidad", "mapa"} and len(OBJECTIVES) == 5
 
 
 def test_experiments_persist_sealed_and_travel_with_device():

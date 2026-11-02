@@ -33,9 +33,9 @@ def test_lab_home_selector_profile_and_cards():
     at, m = _lab()
     html = " ".join(h.proto.body for h in at.get("html"))
     assert "Motor 2 — Laboratorio Virtual" in html and "AJUSTADO_A_CURVA" in html
-    assert "PRÓXIMAMENTE" in html and "Sensibilidad y comparación de escenarios" in html and "Mapa operacional" in html
-    assert len([b for b in at.button if b.label == "Abrir bancada"]) == 4
-    assert all(b.disabled for b in at.button if b.label == "Funcionalidad futura")
+    assert "PRÓXIMAMENTE" not in html and "Sensibilidad y comparación de escenarios" in html and "Mapa operacional" in html
+    assert len([b for b in at.button if b.label == "Abrir bancada"]) == 6           # v0.5.0: seis bancadas
+    assert not [b for b in at.button if b.label == "Funcionalidad futura"]
 
 
 def test_reproduction_bench_runs_and_persists():
@@ -103,4 +103,43 @@ def test_optimization_bench_history_duplicate_and_study():
     assert not at.exception, at.exception
     st_ = at.session_state.m2_study
     assert {ws.experiments[i].bench for i in st_["done"]} == {"reproduccion", "optimizacion"}
-    assert {s["bench"] for s in st_["skipped"]} == {"carga", "hidrogeno"}   # sin configuración → omitidas
+    assert {s["bench"] for s in st_["skipped"]} == {"carga", "hidrogeno", "sensibilidad", "mapa"}   # sin configuración → omitidas
+
+
+def test_bench05_scenarios_and_bench06_map_with_integrations():
+    at, m = _lab()
+    _open(at, 4)
+    at.selectbox(key="m2b_sensibilidad_cond").set_value(at.selectbox(key="m2b_sensibilidad_cond").options[4]).run()
+    _btn(at, "▶ Ejecutar experimento").click().run()
+    assert not at.exception, at.exception
+    ws = at.session_state.ws
+    (e5,) = ws.experiments.values()
+    assert e5.bench == "sensibilidad" and e5.result["context"]["mode"] == "escenarios"
+    _btn(at, "Generar mapa con él").click().run()                        # escenario → Bancada 06
+    assert at.session_state.m2["bench"] == "mapa" and not at.exception
+    _btn(at, "▶ Ejecutar experimento").click().run()
+    assert not at.exception, at.exception
+    e6 = next(e for e in ws.experiments.values() if e.bench == "mapa")
+    assert e6.result["context"]["optimum"] is not None
+    _btn(at, "Guardar como escenario (Bancada 05)").click().run()        # mapa → Bancada 05
+    assert at.session_state.m2_scen_add
+    _btn(at, "Enviar a la Bancada 04 (potencia objetivo)").click().run()  # mapa → Bancada 04
+    assert at.session_state.m2["bench"] == "optimizacion" and not at.exception
+    assert at.selectbox(key="m2b_optimizacion_obj").value == "potencia_objetivo"
+    _btn(at, "▶ Ejecutar experimento").click().run()
+    e4 = next(e for e in ws.experiments.values() if e.bench == "optimizacion")
+    assert e4.result["context"]["selected"]["P_W"] > 0 and not at.exception
+
+
+def test_bench05_sensitivity_and_uncertainty_modes():
+    at, m = _lab()
+    _open(at, 4)
+    at.segmented_control(key="m2b_sensibilidad_mode").set_value("sensibilidad").run()
+    _btn(at, "▶ Ejecutar experimento").click().run()
+    assert not at.exception, at.exception
+    at.segmented_control(key="m2b_sensibilidad_mode").set_value("incertidumbre").run()
+    at.slider(key="m2b_sensibilidad_ns").set_value(100).run()
+    _btn(at, "▶ Ejecutar experimento").click().run()
+    assert not at.exception, at.exception
+    modes = sorted(e.result["context"]["mode"] for e in at.session_state.ws.experiments.values())
+    assert modes == ["incertidumbre", "sensibilidad"]

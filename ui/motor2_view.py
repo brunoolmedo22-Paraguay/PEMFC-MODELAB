@@ -35,11 +35,11 @@ CARDS = [("reproduccion", "01", TEAL, "Reproducción experimental", "Recalcula c
           "utilización, energía producida y operación limitada por combustible."),
          ("optimizacion", "04", ORANGE, "Optimización operacional", "Busca puntos de operación admisibles: máxima potencia, "
           "máxima eficiencia, mínimo consumo específico, potencia objetivo y frontera de compromiso."),
-         ("sensibilidad", "05", VIOLET, "Sensibilidad y comparación de escenarios", "Variación sistemática de condiciones y "
-          "parámetros con comparación de escenarios."),
-         ("mapa", "06", RED, "Mapa operacional", "Mapas de potencia, eficiencia y consumo en función de las condiciones de "
-          "operación.")]
-FUTURE = {"sensibilidad", "mapa"}
+         ("sensibilidad", "05", VIOLET, "Sensibilidad y comparación de escenarios", "Compara escenarios operacionales, "
+          "cuantifica sensibilidades (tornado) y, si el perfil lo permite, propaga la incertidumbre de los parámetros."),
+         ("mapa", "06", RED, "Mapa operacional", "Explora el espacio operacional: mapas de tensión, potencia, eficiencia y H₂ "
+          "con regiones factibles, restricciones, extrapolación y óptimos.")]
+FUTURE: set[str] = set()
 SCOPE = {
     "general": ["Simulación CUASIESTACIONARIA: cada instante se evalúa con la curva de polarización estacionaria identificada "
                 "en el Motor 1 (mismas ecuaciones y parámetros; no hay ecuaciones nuevas).",
@@ -57,6 +57,18 @@ SCOPE = {
     "hidrogeno": ["El caudal alimentado no determina por sí solo el punto de operación: la política lo cierra.",
                   "No se supone que todo el H₂ alimentado reacciona: utilización = consumido / alimentado ≤ u_máx.",
                   "El caudal solo limita la corriente por conservación de masa; no se modelan presión ni estequiometría del ánodo."],
+    "sensibilidad": ["Variables operacionales (T, P, p_H₂, y_O₂) = cambios físicos realizables; parámetros del modelo = "
+                     "perturbación MATEMÁTICA, no un cambio físico.",
+                     "Todos los escenarios se comparan en el mismo dominio de j; las comparaciones puntuales, a igual j.",
+                     "Sensibilidad (determinista, barrido uno-a-uno) ≠ incertidumbre (estadística, covarianza del perfil).",
+                     "La incertidumbre solo se ofrece si el perfil contiene errores estándar y correlaciones; es una aproximación "
+                     "lineal-gaussiana que no incluye el error del modelo.",
+                     "En este modelo la presión de cátodo no entra en el término de Nernst; actúa vía c_O₂ en la activación."],
+    "mapa": ["Calculable ≠ admisible ≠ respaldado: cada celda se clasifica como no calculable, inadmisible, extrapolada o "
+             "dentro del dominio calibrado (rango de calibración, interpolación entre condiciones ensayadas).",
+             "Las regiones no calculables o inadmisibles no se rellenan.",
+             "Los óptimos se calculan con el algoritmo de la Bancada 04 (exactos en j); en la otra variable, refinados o "
+             "aproximados a la malla según se indique."],
     "optimizacion": ["Solo se consideran puntos del dominio admisible (dominio calibrado y límites documentados).",
                      "Maximizar η equivale a minimizar el consumo específico (ambos dependen solo de V_celda).",
                      "Sin potencia mínima útil, el óptimo de eficiencia es trivial (mínima corriente) y se advierte."]}
@@ -252,6 +264,10 @@ def _cond_ui(profile: dict, key: str, prefill: dict | None) -> tuple[dict, dict,
     if ext:
         cond["j_max_extrapolated"] = c2.number_input("j máxima extrapolada [A/cm²]", min_value=float(dom["j_A_cm2"][1]),
                                                      value=float(dom["j_A_cm2"][1]) * 1.2, key=f"{key}_jext")
+    for k_, lab_ in (("p_h2_atm", "p_H₂"), ("oxygen_fraction", "y_O₂")):
+        if pf.get(k_) is not None:
+            cond[k_] = pf[k_]
+            st.caption(f"{lab_} = {pf[k_]:g} (tomado del punto/escenario de origen).")
     basis = st.radio("Poder calorífico para la eficiencia", ["LHV", "HHV"], horizontal=True, key=f"{key}_basis",
                      help="LHV (agua vapor, 241,83 kJ/mol) o HHV (agua líquida, 285,83 kJ/mol). η = V_celda/(PC/2F).")
     with st.expander("Límites operacionales documentados (opcionales)"):
@@ -435,6 +451,9 @@ def _bench_page(bench: str, ws, dev, cal) -> None:
             dt = c[2].number_input("Paso [s] (vacío = auto)", min_value=0.0, value=None, key=f"{key}_dt", format="%.6g")
             config = {"cond": cond, "limits": limits, "basis": basis, "feed": feed, "policy": pol, "value": val,
                       "u_max": umax, "dt_s": dt or None}
+        elif bench in ("sensibilidad", "mapa"):
+            from . import motor2_explore as mx
+            config = (mx.config_sens if bench == "sensibilidad" else mx.config_map)(profile, key, prefill, cond, limits, basis)
         else:
             _sec("Objetivo y restricciones")
             if prefill and prefill.get("objective") in OBJECTIVES and f"{key}_obj" not in ss:
@@ -514,7 +533,11 @@ def render_experiment(ex, ws, key: str) -> None:
     _validity_box(r)
     for w in r.warnings:
         st.warning(w)
-    {"reproduccion": _res_repro, "carga": _res_load, "hidrogeno": _res_h2, "optimizacion": _res_opt}[r.bench](r, key)
+    if r.bench in ("sensibilidad", "mapa"):
+        from . import motor2_explore as mx
+        mx.render_sens(r, key) if r.bench == "sensibilidad" else mx.render_map(r, key, ws, ex)
+    else:
+        {"reproduccion": _res_repro, "carga": _res_load, "hidrogeno": _res_h2, "optimizacion": _res_opt}[r.bench](r, key)
     if r.events:
         with st.expander(f"Eventos ({len(r.events)})", expanded=len(r.events) <= 6):
             st.dataframe(pd.DataFrame([{"evento": e["type"], "inicio [s]": e["t_start_s"], "fin [s]": e["t_end_s"],
@@ -859,7 +882,7 @@ def _scope_tab() -> None:
     st.markdown("**Persistencia.** Los experimentos se guardan en este navegador (IndexedDB) junto con el dispositivo y "
                 "viajan en su paquete ZIP. En Streamlit Cloud el servidor no conserva datos: exporte los experimentos o "
                 "el dispositivo para conservarlos de forma independiente.")
-    for b in ("carga", "hidrogeno", "optimizacion"):
+    for b in ("carga", "hidrogeno", "optimizacion", "sensibilidad", "mapa"):
         st.markdown(f"**{BENCHES[b]}**")
         for s in SCOPE[b]:
             st.markdown(f"- {s}")

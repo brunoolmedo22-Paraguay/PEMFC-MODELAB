@@ -77,6 +77,11 @@ auditables**, y permite experimentar computacionalmente con ellos.
 - **Fenómenos no representados.** Transitorios electroquímicos (doble capa), dinámica de gases y de presión, térmica,
   gestión de agua e hidratación de membrana, degradación, auxiliares (compresor, humidificador, refrigeración), electrónica
   de potencia y balance de planta.
+- **Sensibilidad frente a incertidumbre.** La sensibilidad (Bancada 05) perturba deliberadamente variables o parámetros
+  para ver su efecto; la incertidumbre propaga la variabilidad estadística estimada de los parámetros identificados. Perturbar
+  un parámetro no es un cambio físico realizable.
+- **Calculable frente a validado.** Que el modelo pueda evaluar un punto (Bancada 06) no significa que esté respaldado por
+  datos: solo el dominio calibrado lo está, y por interpolación entre las condiciones ensayadas.
 - **Calibración frente a validación.** Reproducir las curvas usadas en el ajuste mide la calidad del ajuste, no la capacidad
   predictiva. Solo curvas no usadas en el ajuste (rol «validación») permiten una validación independiente.
 - **Extrapolación.** Fuera del dominio calibrado (corriente, temperatura, presión) el modelo se evalúa por extrapolación: los
@@ -125,9 +130,14 @@ parámetros de su perfil (sin ecuaciones nuevas). Disponible en esta versión:
   potencia con u_máx); H₂ alimentado frente a consumido y operación limitada por combustible.
 - **04 Optimización operacional:** máxima potencia, máxima eficiencia, mínimo consumo específico, potencia objetivo y frontera
   de Pareto, siempre dentro del dominio admisible.
-- **Estudio completo, historial, duplicación, comparación** y exportación (CSV, Excel, JSON, PNG/SVG, PDF y ZIP).
-
-**Previsto:** sensibilidad y comparación de escenarios; mapa operacional.
+- **05 Sensibilidad y escenarios:** comparación de escenarios operacionales en un dominio común; sensibilidad uno-a-uno
+  con tornado (variables físicas frente a parámetros, perturbación matemática); incertidumbre estadística por Monte Carlo
+  solo si el perfil trae errores estándar y correlaciones.
+- **06 Mapas operacionales:** j × T, j × P, j × p_H₂, j × y_O₂ y T × P; tensión, potencia, eficiencia, H₂, consumo
+  específico y margen; regiones no calculables, inadmisibles, extrapoladas y calibradas; óptimos con el algoritmo de la
+  Bancada 04; envío de puntos a la Bancada 04 y como escenarios a la 05.
+- **Estudio completo** (seis bancadas), **historial, duplicación, comparación** y exportación (CSV, Excel, JSON,
+  PNG/SVG, PDF y ZIP).
 """)
     if st.button("Acceder al Motor 2 →", key="home_go_m2", type="primary"):
         shell.go("motor2")

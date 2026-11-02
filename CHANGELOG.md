@@ -1,5 +1,49 @@
 # Changelog
 
+## v0.5.0 — Motor 2: Bancadas 05 (sensibilidad y escenarios) y 06 (mapas operacionales) (2026-11)
+
+El Motor 2 queda con **seis bancadas funcionales**. **Núcleo intacto:**
+- `pemfc_core/model.py` e `identification/` no cambian;
+- OTEKON da Δ RMSE = 0,0;
+- **sin ecuaciones nuevas** y **sin dependencias nuevas**.
+
+### Nuevo
+- **`simulation/scenarios.py`** (Bancada 05):
+  - comparación de escenarios en un dominio común de j, con indicadores en un j_ref común y P_máx en el j propio de cada escenario;
+  - sensibilidad uno a uno con derivada central y elasticidad, que se protege cuando el denominador es nulo, con tornado y variable dominante;
+  - incertidumbre estadística por Monte Carlo con la covarianza del perfil (errores estándar y correlación), **solo si existe**;
+  - distinción explícita entre variables operacionales y parámetros (perturbación matemática).
+- **`simulation/maps.py`** (Bancada 06):
+  - mapas j × T, j × P, j × p_H₂, j × y_O₂ y T × P;
+  - categorías no calculable, inadmisible, extrapolado y dominio calibrado;
+  - óptimos con el algoritmo de la Bancada 04 (exactos en j) y lugar de óptimos por fila;
+  - evaluación exacta de puntos y estimación de coste por resolución.
+- **`ui/motor2_explore.py`**:
+  - tabla editable de escenarios (crear, duplicar, renombrar, eliminar, activar) y perturbación de parámetros marcada como matemática;
+  - intervalos de sensibilidad editables;
+  - mapa interactivo con capas activables y selección de puntos con el ratón.
+- **Integraciones:** escenario → mapa; punto del mapa → Bancada 04 (potencia objetivo) y → escenario de la Bancada 05; la Bancada 04 aparece superpuesta en los mapas.
+- **Exportaciones** de las nuevas bancadas: CSV (formato largo), Excel (una hoja por matriz), figuras PNG y SVG, PDF con interpretación y ZIP reproducible.
+- **Estudio completo** con las seis bancadas.
+- **Documentación:** `docs/MOTOR2_BANCADAS_05_06_v0.5.0.md` y `docs/VERIFICACION_v0.5.0.md`.
+- **Textos:** «Acerca de ModelLab» incluye las diferencias entre sensibilidad e incertidumbre y entre región calculable y validada.
+
+### Cambios en archivos existentes
+- `simulation/benches.py`: `BENCHES` incluye `sensibilidad` y `mapa`.
+- `simulation/runner.py`: las bancadas 05 y 06 se ejecutan desde la configuración, con requisitos por modo; `model_for` admite p_H₂ e y_O₂.
+- `simulation/report.py`: figuras, tablas e interpretación de las bancadas 05 y 06.
+- `ui/motor2_view.py`: bancadas 05 y 06 disponibles, hipótesis por bancada y p_H₂ e y_O₂ en las condiciones prellenadas.
+- `ui/home_view.py`: textos del Motor 2 y de «Acerca de».
+- `pemfc_core/schemas.py`: `APP_VERSION = "0.5.0"` (única línea).
+
+### Corregido
+- **Estilo global de matplotlib.** `simulation/report.py` (desde v0.4.0) modificaba ese estilo al importarse, y las figuras del Motor 1 generadas después en el mismo proceso heredaban rejilla y fuente. Ahora el estilo es local (`plt.rc_context`), con una prueba de regresión.
+- **Selección de puntos sobre el mapa.** La capa de selección (`hoverinfo="skip"`) anulaba el clic. Verificado en escritorio.
+- **Validez de escenarios en condiciones calibradas.** Avisos ajenos a las condiciones los marcaban como «no ensayados».
+
+### Limitación conocida
+- **Tablet:** el toque sobre el mapa no seleccionó el punto en la emulación táctil de Chromium. Las coordenadas del punto pueden introducirse a mano.
+
 ## v0.4.0 — Motor 2: Laboratorio Virtual de Experimentación Operacional (2026-11)
 
 El Motor 2 pasa de página provisional a laboratorio funcional sobre los perfiles calibrados del Motor 1. **Núcleo

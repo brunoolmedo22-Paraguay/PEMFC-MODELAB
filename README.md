@@ -1,6 +1,6 @@
-# PEMFC ModelLab v0.4.0 — Identificación y calibración (Motor 1), Laboratorio Virtual (Motor 2) y digitalizador científico
+# PEMFC ModelLab v0.5.0 — Identificación y calibración (Motor 1), Laboratorio Virtual (Motor 2) y digitalizador científico
 
-Página principal con acceso al **Motor 1** (identificación y calibración) y al **Motor 2 — Laboratorio Virtual** (reproducción experimental, seguimiento de carga, alimentación de hidrógeno y optimización operacional sobre perfiles calibrados; ver `docs/MOTOR2_v0.4.0.md`), y pestaña «Modelo implementado» con las ecuaciones reales del código.
+Página principal con acceso al **Motor 1** (identificación y calibración) y al **Motor 2 — Laboratorio Virtual** (seis bancadas sobre perfiles calibrados: reproducción experimental, seguimiento de carga, alimentación de hidrógeno, optimización operacional, sensibilidad y escenarios, y mapas operacionales; ver `docs/MOTOR2_v0.4.0.md` y `docs/MOTOR2_BANCADAS_05_06_v0.5.0.md`), y pestaña «Modelo implementado» con las ecuaciones reales del código.
 
 Plataforma Streamlit para **incorporar, caracterizar, calibrar y administrar dispositivos PEMFC** y generar perfiles
 electroquímicos reproducibles, más un **digitalizador científico** que convierte figuras en tablas X–Y.
@@ -27,6 +27,8 @@ electroquímicos reproducibles, más un **digitalizador científico** que convie
 **Documentación:**
 - `docs/GUIA_USUARIO.md`: guía de usuario.
 - `docs/ARQUITECTURA_v0.3.0.md`: arquitectura, persistencia, OCR, calibración geométrica, exportaciones y compatibilidad.
+- `docs/MOTOR2_BANCADAS_05_06_v0.5.0.md`: Bancadas 05 y 06 (variables, sensibilidad frente a incertidumbre, categorías de los mapas, coherencia con la Bancada 04, actualización desde v0.4.0).
+- `docs/VERIFICACION_v0.5.0.md`: verificación de la v0.5.0.
 - `docs/MOTOR2_v0.4.0.md`: Motor 2 (definiciones, hipótesis, limitaciones, actualización desde v0.3.1).
 - `docs/VERIFICACION_v0.4.0.md`: verificación de la v0.4.0.
 - `docs/VERIFICACION_v0.3.0.md`: verificación y limitaciones (v0.3.0).

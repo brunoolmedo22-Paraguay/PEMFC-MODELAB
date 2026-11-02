@@ -18,7 +18,8 @@ from .stack import F, HEATING, M_H2, VM_NORMAL, OperatingLimits, SimulationError
 from .timeseries import TimeSeries
 
 BENCHES = {"reproduccion": "Reproducción experimental", "carga": "Seguimiento de carga",
-           "hidrogeno": "Alimentación de hidrógeno", "optimizacion": "Optimización operacional"}
+           "hidrogeno": "Alimentación de hidrógeno", "optimizacion": "Optimización operacional",
+           "sensibilidad": "Sensibilidad y comparación de escenarios", "mapa": "Mapa operacional"}
 V_OK, V_WARN, V_EXTRA, V_NO = "VALIDO", "VALIDO_CON_ADVERTENCIAS", "EXTRAPOLADO", "NO_EJECUTABLE"
 
 

@@ -1,0 +1,24 @@
+{
+ "pc_seis_bancadas": 6,
+ "pc_escenarios_graficos": 2,
+ "pc_clic_selecciona_punto": [
+  "0.720621",
+  "0.957495",
+  true
+ ],
+ "pc_en_bancada04": true,
+ "pc_b04_ejecutada": true,
+ "pc_exc": 0,
+ "pc_errs": [],
+ "tablet_seis_bancadas": 6,
+ "tablet_escenarios_graficos": 2,
+ "tablet_clic_selecciona_punto": [
+  "0.720621",
+  "0.720621",
+  false
+ ],
+ "tablet_en_bancada04": true,
+ "tablet_b04_ejecutada": true,
+ "tablet_exc": 0,
+ "tablet_errs": []
+}
